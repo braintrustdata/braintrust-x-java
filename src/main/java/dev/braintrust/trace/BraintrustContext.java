@@ -85,13 +85,19 @@ public final class BraintrustContext {
         
         public Builder projectId(String projectId) {
             this.projectId = projectId;
-            this.parentType = "project";
+            this.experimentId = null; // Clear experiment when setting project
+            if (projectId != null) {
+                this.parentType = "project";
+            }
             return this;
         }
         
         public Builder experimentId(String experimentId) {
             this.experimentId = experimentId;
-            this.parentType = "experiment";
+            this.projectId = null; // Clear project when setting experiment
+            if (experimentId != null) {
+                this.parentType = "experiment";
+            }
             return this;
         }
         

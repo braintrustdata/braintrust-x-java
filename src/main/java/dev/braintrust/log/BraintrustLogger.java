@@ -17,8 +17,8 @@ public final class BraintrustLogger {
     private static final String DEBUG_ENV = "BRAINTRUST_DEBUG";
     
     private static final ReadWriteLock lock = new ReentrantReadWriteLock();
-    private static LoggerImplementation implementation;
-    private static Level minLevel;
+    private static volatile LoggerImplementation implementation;
+    private static volatile Level minLevel;
     
     static {
         // Initialize with default SLF4J implementation
@@ -63,6 +63,32 @@ public final class BraintrustLogger {
      */
     public static void setDebugEnabled(boolean enabled) {
         setLevel(enabled ? Level.DEBUG : Level.INFO);
+    }
+    
+    /**
+     * Gets the current log level.
+     * Package-private for testing.
+     */
+    static Level getLevel() {
+        lock.readLock().lock();
+        try {
+            return minLevel;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+    
+    /**
+     * Gets the current logger implementation.
+     * Package-private for testing.
+     */
+    static LoggerImplementation getLogger() {
+        lock.readLock().lock();
+        try {
+            return implementation;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
     
     /**
@@ -142,7 +168,10 @@ public final class BraintrustLogger {
     }
     
     private static boolean isEnabled(Level level) {
-        return level.compareTo(minLevel) >= 0;
+        // In SLF4J Level enum, severity is in reverse order:
+        // ERROR(0) < WARN(1) < INFO(2) < DEBUG(3) < TRACE(4)
+        // So we need to check if level <= minLevel
+        return level.compareTo(minLevel) <= 0;
     }
     
     /**
@@ -152,13 +181,14 @@ public final class BraintrustLogger {
         void log(Level level, String message, Throwable throwable, Object... args);
     }
     
+    
     /**
-     * Default SLF4J-based implementation.
+     * SLF4J-based implementation.
      */
-    private static class Slf4jLoggerImplementation implements LoggerImplementation {
+    public static class Slf4jLoggerImplementation implements LoggerImplementation {
         private final Logger logger;
         
-        Slf4jLoggerImplementation(Logger logger) {
+        public Slf4jLoggerImplementation(Logger logger) {
             this.logger = logger;
         }
         
@@ -170,28 +200,44 @@ public final class BraintrustLogger {
             switch (level) {
                 case DEBUG -> {
                     if (throwable != null) {
-                        logger.debug(prefixedMessage, args, throwable);
+                        if (args.length > 0) {
+                            logger.debug(prefixedMessage, args, throwable);
+                        } else {
+                            logger.debug(prefixedMessage, throwable);
+                        }
                     } else {
                         logger.debug(prefixedMessage, args);
                     }
                 }
                 case INFO -> {
                     if (throwable != null) {
-                        logger.info(prefixedMessage, args, throwable);
+                        if (args.length > 0) {
+                            logger.info(prefixedMessage, args, throwable);
+                        } else {
+                            logger.info(prefixedMessage, throwable);
+                        }
                     } else {
                         logger.info(prefixedMessage, args);
                     }
                 }
                 case WARN -> {
                     if (throwable != null) {
-                        logger.warn(prefixedMessage, args, throwable);
+                        if (args.length > 0) {
+                            logger.warn(prefixedMessage, args, throwable);
+                        } else {
+                            logger.warn(prefixedMessage, throwable);
+                        }
                     } else {
                         logger.warn(prefixedMessage, args);
                     }
                 }
                 case ERROR -> {
                     if (throwable != null) {
-                        logger.error(prefixedMessage, args, throwable);
+                        if (args.length > 0) {
+                            logger.error(prefixedMessage, args, throwable);
+                        } else {
+                            logger.error(prefixedMessage, throwable);
+                        }
                     } else {
                         logger.error(prefixedMessage, args);
                     }
@@ -204,11 +250,31 @@ public final class BraintrustLogger {
      * Test implementation that captures log messages.
      */
     public static class TestLoggerImplementation implements LoggerImplementation {
-        private final java.util.List<LogEntry> entries = new java.util.ArrayList<>();
+        private final java.util.List<LogEntry> entries = new java.util.concurrent.CopyOnWriteArrayList<>();
         
         @Override
         public void log(Level level, String message, Throwable throwable, Object... args) {
-            entries.add(new LogEntry(level, String.format(message, args), throwable));
+            // Format SLF4J style messages
+            var formattedMessage = formatMessage(message, args);
+            entries.add(new LogEntry(level, formattedMessage, throwable));
+        }
+        
+        private String formatMessage(String message, Object... args) {
+            if (args == null || args.length == 0) {
+                return message;
+            }
+            
+            var result = new StringBuilder();
+            var parts = message.split("\\{\\}", -1);
+            
+            for (int i = 0; i < parts.length; i++) {
+                result.append(parts[i]);
+                if (i < args.length && i < parts.length - 1) {
+                    result.append(args[i]);
+                }
+            }
+            
+            return result.toString();
         }
         
         public java.util.List<LogEntry> getEntries() {

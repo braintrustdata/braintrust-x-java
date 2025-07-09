@@ -55,6 +55,7 @@ dependencies {
 
     // Testing
     testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
     testImplementation "org.assertj:assertj-core:${assertjVersion}"
     testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
     testImplementation "io.opentelemetry:opentelemetry-sdk-testing:${otelVersion}"

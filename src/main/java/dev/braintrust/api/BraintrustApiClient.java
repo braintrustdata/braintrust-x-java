@@ -1,7 +1,9 @@
 package dev.braintrust.api;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.log.BraintrustLogger;
@@ -190,7 +192,9 @@ public class BraintrustApiClient implements AutoCloseable {
     private static ObjectMapper createObjectMapper() {
         return new ObjectMapper()
             .registerModule(new JavaTimeModule())
-            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+            .registerModule(new Jdk8Module()) // For Optional support
+            .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+            .setSerializationInclusion(JsonInclude.Include.NON_ABSENT); // Skip null and absent Optional
     }
     
     @Override
