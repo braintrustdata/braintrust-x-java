@@ -101,10 +101,9 @@ public class QuickStartExample {
             span.setAttribute("item.success", success);
             
             if (!success) {
-                span.addEvent("Processing failed", Map.of(
-                    "reason", "Random failure for demo",
-                    "retry_possible", true
-                ));
+                span.addEvent("Processing failed");
+                span.setAttribute("failure.reason", "Random failure for demo");
+                span.setAttribute("failure.retry_possible", true);
             }
             
             return success;

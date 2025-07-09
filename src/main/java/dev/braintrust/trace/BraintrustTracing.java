@@ -5,7 +5,7 @@ import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -117,11 +117,11 @@ public final class BraintrustTracing {
         public OpenTelemetry build() {
             BraintrustLogger.info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
             
-            // Create OTLP exporter
-            var exporterEndpoint = config.apiUrl() + "/otlp/v1/traces";
-            BraintrustLogger.debug("Creating OTLP exporter with endpoint: {}", exporterEndpoint);
+            // Create OTLP HTTP exporter
+            var exporterEndpoint = config.apiUrl() + "/otel/v1/traces";
+            BraintrustLogger.debug("Creating OTLP HTTP exporter with endpoint: {}", exporterEndpoint);
             
-            var exporter = OtlpGrpcSpanExporter.builder()
+            var exporter = OtlpHttpSpanExporter.builder()
                 .setEndpoint(exporterEndpoint)
                 .addHeader("Authorization", "Bearer " + config.apiKey())
                 .setTimeout(config.requestTimeout())
@@ -205,8 +205,7 @@ public final class BraintrustTracing {
          */
         public static void setParentProject(String projectId) {
             var span = io.opentelemetry.api.trace.Span.current();
-            span.setAttribute(BraintrustSpanProcessor.PARENT_PROJECT_ID, projectId);
-            span.setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "project");
+            span.setAttribute(BraintrustSpanProcessor.PARENT, "project_id:" + projectId);
         }
         
         /**
@@ -214,8 +213,7 @@ public final class BraintrustTracing {
          */
         public static void setParentExperiment(String experimentId) {
             var span = io.opentelemetry.api.trace.Span.current();
-            span.setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, experimentId);
-            span.setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment");
+            span.setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId);
         }
     }
 }

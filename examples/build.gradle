@@ -3,9 +3,6 @@ plugins {
     id 'application'
 }
 
-group = 'dev.braintrust.examples'
-version = '0.1.0-SNAPSHOT'
-
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
@@ -18,39 +15,28 @@ repositories {
 dependencies {
     implementation project(':')
     
-    // AI SDKs for examples
-    implementation 'com.theokanning.openai-gpt3-java:service:0.18.2'
-    implementation 'com.anthropic:anthropic-java:0.1.0'
+    // Official OpenAI Java SDK
+    implementation 'com.openai:openai-java:2.8.1'
     
-    // Logging
-    implementation 'ch.qos.logback:logback-classic:1.4.14'
+    // OkHttp for HTTP client (required by OpenAI SDK)
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
-// Enable preview features
-tasks.withType(JavaCompile) {
-    options.compilerArgs += ["--enable-preview"]
-}
-
-tasks.withType(JavaExec) {
-    jvmArgs += ["--enable-preview"]
-}
-
-// Define main classes for different examples
 application {
-    mainClass = 'dev.braintrust.examples.QuickStartExample'
+    mainClass = 'dev.braintrust.examples.OpenTelemetryExample'
 }
 
-task runEvaluation(type: JavaExec) {
+task runOpenTelemetry(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'dev.braintrust.examples.EvaluationExample'
+    mainClass = 'dev.braintrust.examples.OpenTelemetryExample'
 }
 
-task runStreaming(type: JavaExec) {
+task runSimple(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'dev.braintrust.examples.StreamingExample'
+    mainClass = 'dev.braintrust.examples.SimpleExample'
 }
 
-task runDataset(type: JavaExec) {
+task runProject(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'dev.braintrust.examples.DatasetExample'
+    mainClass = 'dev.braintrust.examples.ProjectExample'
 }

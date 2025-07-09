@@ -275,15 +275,15 @@ public class DatasetExample {
                     "context", r.input().context,
                     "expected", r.input().answer
                 ),
-                Map.of(
+                Optional.of(Map.of(
                     "answer", r.output().answer,
                     "confidence", r.output().confidence,
                     "scores", r.scores()
-                ),
-                Map.of(
+                )),
+                Optional.of(Map.of(
                     "evaluation_run", results.name(),
                     "duration_ms", r.duration().toMillis()
-                )
+                ))
             ))
             .toList();
         

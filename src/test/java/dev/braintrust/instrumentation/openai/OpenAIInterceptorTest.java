@@ -138,7 +138,7 @@ class OpenAIInterceptorTest {
         assertThat(result).isEqualTo(stream);
         
         // Force flush to ensure spans are available
-        otelTesting.getOpenTelemetry().getSdkTracerProvider().forceFlush();
+        // Note: OpenTelemetryExtension handles this automatically
         
         // Verify initial span
         var spans = otelTesting.getSpans();

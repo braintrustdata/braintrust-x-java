@@ -1,1 +1,3 @@
 rootProject.name = 'braintrust-x-java'
+
+include 'examples'

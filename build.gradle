@@ -34,7 +34,6 @@ dependencies {
     api "io.opentelemetry:opentelemetry-sdk-trace:${otelVersion}"
     implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
     implementation "io.opentelemetry:opentelemetry-semconv:1.25.0-alpha"
-    implementation 'io.grpc:grpc-netty-shaded:1.61.0' // Required for OTLP gRPC
 
     // HTTP Client (Java 11+)
     implementation 'com.fasterxml.jackson.core:jackson-databind:' + jacksonVersion
@@ -50,7 +49,7 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3:3.14.0'
     
     // AI SDKs (optional dependencies)
-    compileOnly 'com.theokanning.openai-gpt3-java:service:0.18.2'
+    // compileOnly 'com.openai:openai-java:0.7.0' // Official OpenAI SDK
     // compileOnly 'com.anthropic:anthropic-java:0.1.0' // Not yet available
 
     // Testing
