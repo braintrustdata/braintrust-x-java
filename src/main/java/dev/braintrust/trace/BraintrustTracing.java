@@ -1,6 +1,7 @@
 package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
@@ -114,9 +115,14 @@ public final class BraintrustTracing {
         }
         
         public OpenTelemetry build() {
+            BraintrustLogger.info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
+            
             // Create OTLP exporter
+            var exporterEndpoint = config.apiUrl() + "/otlp/v1/traces";
+            BraintrustLogger.debug("Creating OTLP exporter with endpoint: {}", exporterEndpoint);
+            
             var exporter = OtlpHttpSpanExporter.builder()
-                .setEndpoint(config.apiUrl() + "/otlp/v1/traces")
+                .setEndpoint(exporterEndpoint)
                 .addHeader("Authorization", "Bearer " + config.apiKey())
                 .setTimeout(config.requestTimeout())
                 .build();
@@ -155,10 +161,12 @@ public final class BraintrustTracing {
             // Register globally if requested
             if (registerGlobal) {
                 GlobalOpenTelemetry.set(openTelemetry);
+                BraintrustLogger.debug("Registered OpenTelemetry globally");
             }
             
             // Register shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                BraintrustLogger.debug("Shutting down tracer provider");
                 tracerProvider.shutdown();
             }));
             

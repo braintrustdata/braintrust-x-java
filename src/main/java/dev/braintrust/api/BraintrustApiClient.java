@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.braintrust.config.BraintrustConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.braintrust.log.BraintrustLogger;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,7 +22,6 @@ import java.util.concurrent.CompletionException;
  * Provides both synchronous and asynchronous methods.
  */
 public class BraintrustApiClient implements AutoCloseable {
-    private static final Logger logger = LoggerFactory.getLogger(BraintrustApiClient.class);
     
     private final BraintrustConfig config;
     private final HttpClient httpClient;
@@ -151,26 +149,24 @@ public class BraintrustApiClient implements AutoCloseable {
     }
     
     private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
-        if (config.debug()) {
-            logger.debug("API Request: {} {}", request.method(), request.uri());
-        }
+        BraintrustLogger.debug("API Request: {} {}", request.method(), request.uri());
         
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
             .thenApply(response -> handleResponse(response, responseType));
     }
     
     private <T> T handleResponse(HttpResponse<String> response, Class<T> responseType) {
-        if (config.debug()) {
-            logger.debug("API Response: {} - {}", response.statusCode(), response.body());
-        }
+        BraintrustLogger.debug("API Response: {} - {}", response.statusCode(), response.body());
         
         if (response.statusCode() >= 200 && response.statusCode() < 300) {
             try {
                 return objectMapper.readValue(response.body(), responseType);
             } catch (IOException e) {
+                BraintrustLogger.warn("Failed to parse response body", e);
                 throw new ApiException("Failed to parse response body", e);
             }
         } else {
+            BraintrustLogger.warn("API request failed with status {}: {}", response.statusCode(), response.body());
             throw new ApiException(
                 String.format("API request failed with status %d: %s", 
                     response.statusCode(), response.body())

@@ -11,8 +11,7 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.braintrust.log.BraintrustLogger;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -25,7 +24,6 @@ import java.util.concurrent.ConcurrentMap;
  * Supports parent assignment to projects or experiments.
  */
 public class BraintrustSpanProcessor implements SpanProcessor {
-    private static final Logger logger = LoggerFactory.getLogger(BraintrustSpanProcessor.class);
     
     // Braintrust-specific attributes
     public static final AttributeKey<String> PARENT_PROJECT_ID = AttributeKey.stringKey("braintrust.parent.project_id");
@@ -53,20 +51,29 @@ public class BraintrustSpanProcessor implements SpanProcessor {
     
     @Override
     public void onStart(Context parentContext, ReadWriteSpan span) {
+        BraintrustLogger.debug("OnStart: span={}, parent={}", span.getName(), parentContext);
+        
         // Add default project ID if configured
         config.defaultProjectId().ifPresent(projectId -> {
-            if (!span.getAttribute(PARENT_PROJECT_ID) != null && 
-                !span.getAttribute(PARENT_EXPERIMENT_ID) != null) {
+            if (span.getAttribute(PARENT_PROJECT_ID) == null && 
+                span.getAttribute(PARENT_EXPERIMENT_ID) == null) {
                 span.setAttribute(PARENT_PROJECT_ID, projectId);
                 span.setAttribute(PARENT_TYPE, "project");
+                BraintrustLogger.debug("OnStart: set default project {} for span {}", projectId, span.getName());
             }
         });
         
         // Check if parent context has Braintrust attributes
         var btContext = BraintrustContext.fromContext(parentContext);
         if (btContext != null) {
-            btContext.projectId().ifPresent(id -> span.setAttribute(PARENT_PROJECT_ID, id));
-            btContext.experimentId().ifPresent(id -> span.setAttribute(PARENT_EXPERIMENT_ID, id));
+            btContext.projectId().ifPresent(id -> {
+                span.setAttribute(PARENT_PROJECT_ID, id);
+                BraintrustLogger.debug("OnStart: set parent project {} from context", id);
+            });
+            btContext.experimentId().ifPresent(id -> {
+                span.setAttribute(PARENT_EXPERIMENT_ID, id);
+                BraintrustLogger.debug("OnStart: set parent experiment {} from context", id);
+            });
             btContext.parentType().ifPresent(type -> span.setAttribute(PARENT_TYPE, type));
         }
         
@@ -117,7 +124,7 @@ public class BraintrustSpanProcessor implements SpanProcessor {
     
     private void logSpanDetails(ReadableSpan span) {
         var spanData = span.toSpanData();
-        logger.debug("Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={}",
+        BraintrustLogger.debug("Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={}",
             spanData.getName(),
             spanData.getTraceId(),
             spanData.getSpanId(),

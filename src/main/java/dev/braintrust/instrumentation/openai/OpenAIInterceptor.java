@@ -1,5 +1,6 @@
 package dev.braintrust.instrumentation.openai;
 
+import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.Span;
@@ -37,6 +38,9 @@ public class OpenAIInterceptor {
         var tracer = BraintrustTracing.getTracer();
         var requestDetails = requestExtractor.extract(request);
         
+        BraintrustLogger.debug("OpenAI {} request: model={}, maxTokens={}, temperature={}", 
+            operation, requestDetails.model(), requestDetails.maxTokens(), requestDetails.temperature());
+        
         var span = tracer.spanBuilder("openai." + operation)
             .setSpanKind(SpanKind.CLIENT)
             .setAttribute("openai.model", requestDetails.model())
@@ -50,6 +54,12 @@ public class OpenAIInterceptor {
             // Extract and record usage metrics
             var responseDetails = responseExtractor.extract(response);
             if (responseDetails.usage() != null) {
+                BraintrustLogger.debug("OpenAI {} response: promptTokens={}, completionTokens={}, totalTokens={}", 
+                    operation, 
+                    responseDetails.usage().promptTokens(),
+                    responseDetails.usage().completionTokens(),
+                    responseDetails.usage().totalTokens());
+                
                 span.setAttribute(BraintrustSpanProcessor.USAGE_PROMPT_TOKENS, 
                     responseDetails.usage().promptTokens());
                 span.setAttribute(BraintrustSpanProcessor.USAGE_COMPLETION_TOKENS, 
@@ -70,6 +80,7 @@ public class OpenAIInterceptor {
             return response;
             
         } catch (Exception e) {
+            BraintrustLogger.warn("OpenAI {} request failed: {}", operation, e.getMessage(), e);
             span.recordException(e);
             span.setStatus(StatusCode.ERROR, e.getMessage());
             throw e;
