@@ -240,6 +240,26 @@ The project includes Gradle Wrapper, so you don't need to install Gradle separat
 - **VS Code**: Install "Extension Pack for Java"
 - **Eclipse**: Import as Gradle project
 
+### Code Formatting
+
+This project uses [Google Java Format](https://github.com/google/google-java-format) for consistent code style.
+
+```bash
+# Check code formatting
+./gradlew spotlessCheck
+
+# Fix formatting issues
+./gradlew spotlessApply
+
+# Install git pre-commit hooks
+./gradlew installGitHooks
+```
+
+The pre-commit hook will automatically check formatting before each commit. To skip it temporarily:
+```bash
+git commit --no-verify
+```
+
 ### Common Tasks
 
 ```bash

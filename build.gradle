@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'com.diffplug.spotless' version '6.25.0'
 }
 
 group = 'dev.braintrust'
@@ -118,5 +119,39 @@ publishing {
                 }
             }
         }
+    }
+}
+
+// Configure Spotless for code formatting
+spotless {
+    java {
+        target 'src/*/java/**/*.java', 'examples/src/*/java/**/*.java'
+        
+        // Use Google Java Format
+        googleJavaFormat('1.19.2').aosp().reflowLongStrings()
+        
+        // Remove unused imports
+        removeUnusedImports()
+        
+        // Trim trailing whitespace
+        trimTrailingWhitespace()
+        
+        // End with newline
+        endWithNewline()
+    }
+}
+
+// Task to install git hooks
+task installGitHooks(type: Exec) {
+    description = 'Install git hooks for code formatting'
+    group = 'Build Setup'
+    commandLine 'bash', 'scripts/install-hooks.sh'
+}
+
+// Run installGitHooks after project evaluation
+afterEvaluate {
+    // Install hooks when building for the first time
+    tasks.named('build').configure {
+        dependsOn installGitHooks
     }
 }
