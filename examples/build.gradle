@@ -40,3 +40,8 @@ task runProject(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'dev.braintrust.examples.ProjectExample'
 }
+
+task runTestEndpoint(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.TestOtlpEndpoint'
+}

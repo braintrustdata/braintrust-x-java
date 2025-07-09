@@ -44,10 +44,17 @@ public class OpenTelemetryExample {
         }
         
         try {
+            
             // Initialize Braintrust with OpenTelemetry
+            // You can set the project ID here or via BRAINTRUST_PROJECT_ID env var
+            String projectId = System.getenv("BRAINTRUST_PROJECT_ID");
+            if (projectId == null || projectId.isEmpty()) {
+                projectId = "opentelemetry-example"; // Default project ID
+            }
+            
             var config = BraintrustConfig.builder()
                 .apiKey(BRAINTRUST_API_KEY)
-                .defaultProjectId("opentelemetry-example") // Set default project
+                .defaultProjectId(projectId) // Set default project
                 .build();
             
             var openTelemetry = BraintrustTracing.quickstart(config, builder -> builder

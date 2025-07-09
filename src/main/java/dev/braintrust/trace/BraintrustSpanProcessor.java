@@ -60,36 +60,26 @@ public class BraintrustSpanProcessor implements SpanProcessor {
     public void onStart(Context parentContext, ReadWriteSpan span) {
         BraintrustLogger.debug("OnStart: span={}, parent={}", span.getName(), parentContext);
         
-        // Add default project ID if configured, or use service name as fallback
-        var projectId = config.defaultProjectId().orElse(null);
-        
+        // Check if span already has a parent attribute
         if (span.getAttribute(PARENT) == null) {
-            // If no project ID is configured, use the service name from resource attributes
-            if (projectId == null) {
-                var serviceName = span.getAttribute(AttributeKey.stringKey("service.name"));
-                if (serviceName != null) {
-                    projectId = serviceName;
-                    BraintrustLogger.debug("OnStart: using service name {} as project ID", serviceName);
-                }
+            // Check if parent context has Braintrust attributes first
+            var btContext = BraintrustContext.fromContext(parentContext);
+            if (btContext != null) {
+                btContext.projectId().ifPresent(id -> {
+                    span.setAttribute(PARENT, "project_id:" + id);
+                    BraintrustLogger.debug("OnStart: set parent project {} from context", id);
+                });
+                btContext.experimentId().ifPresent(id -> {
+                    span.setAttribute(PARENT, "experiment_id:" + id);
+                    BraintrustLogger.debug("OnStart: set parent experiment {} from context", id);
+                });
+            } else {
+                // Use default project ID if configured
+                config.defaultProjectId().ifPresent(projectId -> {
+                    span.setAttribute(PARENT, "project_id:" + projectId);
+                    BraintrustLogger.debug("OnStart: set default project {} for span {}", projectId, span.getName());
+                });
             }
-            
-            if (projectId != null) {
-                span.setAttribute(PARENT, "project_id:" + projectId);
-                BraintrustLogger.debug("OnStart: set project {} for span {}", projectId, span.getName());
-            }
-        }
-        
-        // Check if parent context has Braintrust attributes
-        var btContext = BraintrustContext.fromContext(parentContext);
-        if (btContext != null) {
-            btContext.projectId().ifPresent(id -> {
-                span.setAttribute(PARENT, "project_id:" + id);
-                BraintrustLogger.debug("OnStart: set parent project {} from context", id);
-            });
-            btContext.experimentId().ifPresent(id -> {
-                span.setAttribute(PARENT, "experiment_id:" + id);
-                BraintrustLogger.debug("OnStart: set parent experiment {} from context", id);
-            });
         }
         
         delegate.onStart(parentContext, span);

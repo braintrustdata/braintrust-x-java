@@ -10,6 +10,7 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 
 import java.time.Duration;
@@ -117,20 +118,25 @@ public final class BraintrustTracing {
         public OpenTelemetry build() {
             BraintrustLogger.info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
             
-            // Create OTLP HTTP exporter
-            var exporterEndpoint = config.apiUrl() + "/otel/v1/traces";
-            BraintrustLogger.debug("Creating OTLP HTTP exporter with endpoint: {}", exporterEndpoint);
             
-            var exporter = OtlpHttpSpanExporter.builder()
+            // Create OTLP HTTP exporter
+            // The Java OTLP HTTP exporter uses the exact endpoint we provide
+            var exporterEndpoint = config.apiUrl() + "/otel/v1/traces";
+            
+            // Create the OTLP HTTP exporter
+            SpanExporter exporter = OtlpHttpSpanExporter.builder()
                 .setEndpoint(exporterEndpoint)
                 .addHeader("Authorization", "Bearer " + config.apiKey())
                 .setTimeout(config.requestTimeout())
                 .build();
             
-            // Create Braintrust span processor
-            var spanProcessor = new BraintrustSpanProcessor.Builder(config)
-                .withExporter(exporter)
-                .build();
+            // Create resource first so BraintrustSpanProcessor can access service.name
+            var resourceBuilder = Resource.getDefault().toBuilder()
+                .put(ResourceAttributes.SERVICE_NAME, serviceName)
+                .put(ResourceAttributes.SERVICE_VERSION, INSTRUMENTATION_VERSION);
+            
+            resourceAttributes.forEach(resourceBuilder::put);
+            var resource = resourceBuilder.build();
             
             // Create batch processor for efficient export
             var batchProcessor = BatchSpanProcessor.builder(exporter)
@@ -139,18 +145,13 @@ public final class BraintrustTracing {
                 .setMaxExportBatchSize(maxExportBatchSize)
                 .build();
             
-            // Create resource
-            var resourceBuilder = Resource.getDefault().toBuilder()
-                .put(ResourceAttributes.SERVICE_NAME, serviceName)
-                .put(ResourceAttributes.SERVICE_VERSION, INSTRUMENTATION_VERSION);
-            
-            resourceAttributes.forEach(resourceBuilder::put);
+            // Create Braintrust span processor that wraps the batch processor
+            var spanProcessor = new BraintrustSpanProcessor(config, batchProcessor);
             
             // Create tracer provider
             var tracerProvider = SdkTracerProvider.builder()
-                .setResource(resourceBuilder.build())
+                .setResource(resource)
                 .addSpanProcessor(spanProcessor)
-                .addSpanProcessor(batchProcessor)
                 .build();
             
             // Create OpenTelemetry instance
