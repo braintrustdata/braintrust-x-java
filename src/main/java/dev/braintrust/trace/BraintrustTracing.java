@@ -5,12 +5,12 @@ import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
-import io.opentelemetry.semconv.ResourceAttributes;
+import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -121,7 +121,7 @@ public final class BraintrustTracing {
             var exporterEndpoint = config.apiUrl() + "/otlp/v1/traces";
             BraintrustLogger.debug("Creating OTLP exporter with endpoint: {}", exporterEndpoint);
             
-            var exporter = OtlpHttpSpanExporter.builder()
+            var exporter = OtlpGrpcSpanExporter.builder()
                 .setEndpoint(exporterEndpoint)
                 .addHeader("Authorization", "Bearer " + config.apiKey())
                 .setTimeout(config.requestTimeout())

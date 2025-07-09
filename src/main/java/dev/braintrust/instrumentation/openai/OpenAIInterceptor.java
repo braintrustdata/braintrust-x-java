@@ -154,11 +154,14 @@ public class OpenAIInterceptor {
     
     private static double getCostPer1kTokens(String model, boolean isPrompt) {
         // Simplified pricing - should be configurable
-        return switch (model.toLowerCase()) {
-            case String m when m.contains("gpt-4") -> isPrompt ? 0.03 : 0.06;
-            case String m when m.contains("gpt-3.5") -> isPrompt ? 0.0015 : 0.002;
-            default -> 0.0;
-        };
+        var modelLower = model.toLowerCase();
+        if (modelLower.contains("gpt-4")) {
+            return isPrompt ? 0.03 : 0.06;
+        } else if (modelLower.contains("gpt-3.5")) {
+            return isPrompt ? 0.0015 : 0.002;
+        } else {
+            return 0.0;
+        }
     }
     
     /**

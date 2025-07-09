@@ -11,6 +11,7 @@ import io.opentelemetry.sdk.trace.ReadableSpan;
 import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import dev.braintrust.log.BraintrustLogger;
 
 import javax.annotation.Nullable;
@@ -190,7 +191,7 @@ public class BraintrustSpanProcessor implements SpanProcessor {
             var processors = new java.util.ArrayList<SpanProcessor>();
             
             if (exporter != null) {
-                processors.add(SpanProcessor.simple(exporter));
+                processors.add(BatchSpanProcessor.builder(exporter).build());
             }
             
             if (enableConsoleLog) {

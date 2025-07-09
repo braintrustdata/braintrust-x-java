@@ -190,13 +190,73 @@ var results = Evaluation.<Input, Output>builder()
 
 ## Requirements
 
-- Java 17 or higher
-- Gradle 8.0 or higher (for building)
+- **Java 17** (LTS) - Required for building and running
+  - macOS: `brew install openjdk@17`
+  - Ubuntu/Debian: `sudo apt install openjdk-17-jdk`
+  - Windows: Download from [Adoptium](https://adoptium.net/)
+  
+- **Gradle** - Build tool (wrapper included)
 
-## Building
+## Setup
+
+### 1. Install Java 17
 
 ```bash
+# macOS with Homebrew
+brew install openjdk@17
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+
+# Or add to your shell profile for permanent setup
+echo 'export JAVA_HOME=$(/usr/libexec/java_home -v 17)' >> ~/.zshrc
+```
+
+### 2. Verify Java Version
+
+```bash
+java -version
+# Should output: openjdk version "17.0.x"
+```
+
+### 3. Building
+
+The project includes Gradle Wrapper, so you don't need to install Gradle separately:
+
+```bash
+# First time setup (downloads Gradle automatically)
 ./gradlew build
+
+# Run tests
+./gradlew test
+
+# Clean build
+./gradlew clean build
+```
+
+## Development
+
+### IDE Setup
+
+- **IntelliJ IDEA**: Import as Gradle project
+- **VS Code**: Install "Extension Pack for Java"
+- **Eclipse**: Import as Gradle project
+
+### Common Tasks
+
+```bash
+# Run tests with detailed output
+./gradlew test --info
+
+# Build without tests
+./gradlew build -x test
+
+# Generate Javadoc
+./gradlew javadoc
+
+# Check dependencies
+./gradlew dependencies
+
+# Update Gradle wrapper
+./gradlew wrapper --gradle-version=8.10.2
 ```
 
 ## Running Examples
@@ -217,6 +277,25 @@ var results = Evaluation.<Input, Output>builder()
 ```bash
 ./gradlew test
 ```
+
+## Project Structure
+
+### Files to Commit to Git
+
+The following Gradle files should be committed:
+- `build.gradle` - Build configuration
+- `settings.gradle` - Project settings
+- `gradle.properties` - Gradle properties
+- `gradlew` - Gradle wrapper script (Unix)
+- `gradlew.bat` - Gradle wrapper script (Windows) 
+- `gradle/wrapper/gradle-wrapper.jar` - Gradle wrapper JAR
+- `gradle/wrapper/gradle-wrapper.properties` - Wrapper configuration
+
+The `.gitignore` file is configured to exclude:
+- `.gradle/` - Gradle cache directory
+- `build/` - Build outputs
+- IDE files (`.idea/`, `*.iml`, etc.)
+- Compiled classes (`*.class`)
 
 ## License
 

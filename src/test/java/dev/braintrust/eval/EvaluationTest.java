@@ -19,7 +19,7 @@ class EvaluationTest {
     
     @BeforeEach
     void setUp() {
-        GlobalOpenTelemetry.set(otelTesting.getOpenTelemetry());
+        // OpenTelemetryExtension already sets up GlobalOpenTelemetry
     }
     
     @Test

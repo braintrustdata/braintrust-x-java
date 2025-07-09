@@ -197,13 +197,18 @@ public class AnthropicInterceptor {
     
     private static double getCostPer1kTokens(String model, boolean isInput) {
         // Simplified pricing - should be configurable
-        return switch (model.toLowerCase()) {
-            case String m when m.contains("claude-3-opus") -> isInput ? 0.015 : 0.075;
-            case String m when m.contains("claude-3-sonnet") -> isInput ? 0.003 : 0.015;
-            case String m when m.contains("claude-3-haiku") -> isInput ? 0.00025 : 0.00125;
-            case String m when m.contains("claude-2") -> isInput ? 0.008 : 0.024;
-            default -> 0.0;
-        };
+        var modelLower = model.toLowerCase();
+        if (modelLower.contains("claude-3-opus")) {
+            return isInput ? 0.015 : 0.075;
+        } else if (modelLower.contains("claude-3-sonnet")) {
+            return isInput ? 0.003 : 0.015;
+        } else if (modelLower.contains("claude-3-haiku")) {
+            return isInput ? 0.00025 : 0.00125;
+        } else if (modelLower.contains("claude-2")) {
+            return isInput ? 0.008 : 0.024;
+        } else {
+            return 0.0;
+        }
     }
     
     /**
