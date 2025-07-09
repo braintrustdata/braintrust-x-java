@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'dev.braintrust.examples'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':')
+    
+    // AI SDKs for examples
+    implementation 'com.theokanning.openai-gpt3-java:service:0.18.2'
+    implementation 'com.anthropic:anthropic-java:0.1.0'
+    
+    // Logging
+    implementation 'ch.qos.logback:logback-classic:1.4.14'
+}
+
+// Enable preview features
+tasks.withType(JavaCompile) {
+    options.compilerArgs += ["--enable-preview"]
+}
+
+tasks.withType(JavaExec) {
+    jvmArgs += ["--enable-preview"]
+}
+
+// Define main classes for different examples
+application {
+    mainClass = 'dev.braintrust.examples.QuickStartExample'
+}
+
+task runEvaluation(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.EvaluationExample'
+}
+
+task runStreaming(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.StreamingExample'
+}
+
+task runDataset(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.DatasetExample'
+}
