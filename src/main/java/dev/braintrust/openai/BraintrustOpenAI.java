@@ -24,13 +24,13 @@ public class BraintrustOpenAI {
 
     // Attribute keys matching Go SDK conventions
     private static final AttributeKey<String> ATTR_INPUT =
-            AttributeKey.stringKey("braintrust.input");
+            AttributeKey.stringKey("braintrust.input_json");
     private static final AttributeKey<String> ATTR_OUTPUT =
-            AttributeKey.stringKey("braintrust.output");
+            AttributeKey.stringKey("braintrust.output_json");
     private static final AttributeKey<String> ATTR_METADATA =
-            AttributeKey.stringKey("braintrust.metadata");
+            AttributeKey.stringKey("braintrust.metadata_json");
     private static final AttributeKey<String> ATTR_METRICS =
-            AttributeKey.stringKey("braintrust.metrics");
+            AttributeKey.stringKey("braintrust.metrics_json");
 
     // Individual metric attributes (for compatibility with Java SDK patterns)
     private static final AttributeKey<Long> ATTR_PROMPT_TOKENS =
@@ -80,7 +80,7 @@ public class BraintrustOpenAI {
                     inputArray.add(messageNode);
                 }
 
-                // Set braintrust.input as JSON string (matching Go SDK)
+                // Set braintrust.input_json as JSON string for proper parsing
                 span.setAttribute(ATTR_INPUT, inputArray.toString());
 
                 // Prepare metadata
@@ -108,7 +108,7 @@ public class BraintrustOpenAI {
                 response.systemFingerprint()
                         .ifPresent(fp -> metadataNode.put("system_fingerprint", fp));
 
-                // Set braintrust.metadata as JSON string
+                // Set braintrust.metadata_json as JSON string for proper parsing
                 span.setAttribute(ATTR_METADATA, metadataNode.toString());
 
                 // Prepare output structure - matches Go SDK format exactly
@@ -133,7 +133,7 @@ public class BraintrustOpenAI {
                     outputArray.add(choiceNode);
                 }
 
-                // Set braintrust.output as JSON string
+                // Set braintrust.output_json as JSON string for proper parsing
                 span.setAttribute(ATTR_OUTPUT, outputArray.toString());
 
                 // Set metrics - both as JSON and individual attributes
