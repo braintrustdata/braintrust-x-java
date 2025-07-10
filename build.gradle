@@ -50,7 +50,7 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3:3.14.0'
     
     // AI SDKs (optional dependencies)
-    // compileOnly 'com.openai:openai-java:0.7.0' // Official OpenAI SDK
+    compileOnly 'com.openai:openai-java:2.8.1' // Official OpenAI SDK
     // compileOnly 'com.anthropic:anthropic-java:0.1.0' // Not yet available
 
     // Testing

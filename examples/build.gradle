@@ -75,3 +75,8 @@ task runTestEndpoints(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'dev.braintrust.examples.TestApiEndpoints'
 }
+
+task runTriviaEval(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.TriviaEvaluation'
+}
