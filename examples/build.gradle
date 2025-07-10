@@ -45,3 +45,33 @@ task runTestEndpoint(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'dev.braintrust.examples.TestOtlpEndpoint'
 }
+
+task runExperiment(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.ExperimentExample'
+}
+
+task runSimpleExperiment(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.SimpleExperimentExample'
+}
+
+task runExperimentWithApi(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.ExperimentWithApiExample'
+}
+
+task runGoStyleExperiment(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.SimpleExperimentWithRegistration'
+}
+
+task runDebugAuth(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.DebugAuthHeader'
+}
+
+task runTestEndpoints(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.TestApiEndpoints'
+}

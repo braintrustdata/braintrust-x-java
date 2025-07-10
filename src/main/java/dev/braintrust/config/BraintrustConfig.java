@@ -151,7 +151,8 @@ public final class BraintrustConfig {
 
         private static String getEnv(String key, String defaultValue) {
             String value = System.getenv(key);
-            return value != null ? value : defaultValue;
+            // Trim any whitespace that might have been accidentally included
+            return value != null ? value.trim() : defaultValue;
         }
     }
 }

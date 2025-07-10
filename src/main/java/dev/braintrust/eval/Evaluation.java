@@ -2,10 +2,8 @@ package dev.braintrust.eval;
 
 import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
-import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -43,38 +41,15 @@ public final class Evaluation<INPUT, OUTPUT> {
 
     /** Runs the evaluation and returns results. */
     public EvaluationResults<INPUT, OUTPUT> run() {
-        var span =
-                tracer.spanBuilder("evaluation")
-                        .setSpanKind(SpanKind.INTERNAL)
-                        .setAttribute("evaluation.name", name)
-                        .startSpan();
+        // Each evaluation case should be its own root trace, not a child
+        var results = streamData().map(this::evaluateOne).collect(Collectors.toList());
 
-        try (var scope = span.makeCurrent()) {
-            return options.experimentId != null ? runWithExperiment(span) : runStandalone(span);
-        } finally {
-            span.end();
-        }
+        return new EvaluationResults<>(name, results, calculateSummary(results));
     }
 
     /** Runs the evaluation asynchronously. */
     public CompletableFuture<EvaluationResults<INPUT, OUTPUT>> runAsync() {
         return CompletableFuture.supplyAsync(this::run, options.executor);
-    }
-
-    private EvaluationResults<INPUT, OUTPUT> runStandalone(Span parentSpan) {
-        var results =
-                streamData()
-                        .map(input -> evaluateOne(input, parentSpan))
-                        .collect(Collectors.toList());
-
-        return new EvaluationResults<>(name, results, calculateSummary(results));
-    }
-
-    private EvaluationResults<INPUT, OUTPUT> runWithExperiment(Span parentSpan) {
-        parentSpan.setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, options.experimentId);
-        parentSpan.setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment");
-
-        return runStandalone(parentSpan);
     }
 
     private Stream<INPUT> streamData() {
@@ -83,15 +58,43 @@ public final class Evaluation<INPUT, OUTPUT> {
                 : StreamSupport.stream(data.spliterator(), options.parallel);
     }
 
-    private EvaluationResult<INPUT, OUTPUT> evaluateOne(INPUT input, Span parentSpan) {
+    private EvaluationResult<INPUT, OUTPUT> evaluateOne(INPUT input) {
+        // Create a new root span for each evaluation case
         var span =
-                tracer.spanBuilder("evaluation.task")
-                        .setParent(Context.current().with(parentSpan))
-                        .setSpanKind(SpanKind.INTERNAL)
+                tracer.spanBuilder("eval")
+                        .setNoParent() // Make it a root span
+                        .setSpanKind(SpanKind.CLIENT)
                         .startSpan();
+
+        // Set the experiment parent if configured
+        if (options.experimentId != null) {
+            span.setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, options.experimentId);
+            span.setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment");
+            span.setAttribute(
+                    BraintrustSpanProcessor.PARENT, "experiment_id:" + options.experimentId);
+        }
+
+        // Add the type attribute to match Go SDK
+        span.setAttribute("type", "eval");
 
         try (var scope = span.makeCurrent()) {
             var startTime = Instant.now();
+
+            // Add input to span
+            span.setAttribute("input", String.valueOf(input));
+
+            // Try to extract expected value if the input has an "expected" field
+            try {
+                var inputClass = input.getClass();
+                var expectedField = inputClass.getDeclaredField("expected");
+                expectedField.setAccessible(true);
+                var expectedValue = expectedField.get(input);
+                if (expectedValue != null) {
+                    span.setAttribute("expected", String.valueOf(expectedValue));
+                }
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                // No expected field, which is fine
+            }
 
             // Run the task
             OUTPUT output;
@@ -106,6 +109,11 @@ public final class Evaluation<INPUT, OUTPUT> {
             }
 
             var duration = Duration.between(startTime, Instant.now());
+
+            // Add output to span
+            if (output != null) {
+                span.setAttribute("output", String.valueOf(output));
+            }
 
             // Calculate scores
             var scores = calculateScores(input, output, error);
@@ -263,6 +271,24 @@ public final class Evaluation<INPUT, OUTPUT> {
         public Builder<INPUT, OUTPUT> experimentId(String experimentId) {
             this.options.experimentId = experimentId;
             return this;
+        }
+
+        /**
+         * Convenience method that creates a new experiment and uses its ID. Matches the Go SDK
+         * pattern of automatically registering experiments.
+         */
+        public Builder<INPUT, OUTPUT> experiment(String experimentName, String projectName) {
+            try {
+                // This matches Go's pattern of creating experiment during setup
+                var experimentId =
+                        dev.braintrust.api.Experiment.getOrCreateExperiment(
+                                        experimentName, projectName)
+                                .get();
+                this.options.experimentId = experimentId;
+                return this;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to register experiment", e);
+            }
         }
 
         public Builder<INPUT, OUTPUT> parallel(boolean parallel) {

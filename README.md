@@ -48,20 +48,28 @@ The evaluation framework uses Java generics and functional interfaces for type-s
 // Define your test cases using records
 record TestCase(String input, String expected) {}
 
-// Run evaluation with multiple scorers
+// Simple approach with automatic experiment registration (like Go SDK)
 var results = Evaluation.<TestCase, String>builder()
     .name("My Evaluation")
     .data(testCases)
     .task(testCase -> myModel.process(testCase.input))
-    .scorer(Scorer.StringScorers.exactMatch(tc -> tc.expected))
-    .scorer(Scorer.StringScorers.levenshtein(tc -> tc.expected))
-    .parallel(true)
+    .scorer("accuracy", (test, output) -> output.equals(test.expected) ? 1.0 : 0.0)
+    .experiment("my-experiment", "my-project")  // Automatically creates both!
+    .build()
     .run();
 
-// Analyze results using streams
-results.successful()
-    .filter(r -> r.averageScore() < 0.8)
-    .forEach(r -> System.out.println("Low score: " + r.input()));
+// Or use the lower-level API matching Go's RegisterExperiment
+var project = Project.registerProjectSync("my-project");
+var experiment = Experiment.registerExperimentSync("my-experiment", project.id());
+
+var evaluation = Evaluation.<TestCase, String>builder()
+    .name("My Evaluation")
+    .data(testCases)
+    .task(testCase -> myModel.process(testCase.input))
+    .scorer(Scorer.StringScorers.exactMatch(tc -> tc.expected))
+    .experimentId(experiment.id())
+    .parallel(true)
+    .build();
 ```
 
 ## Idiomatic Java Features

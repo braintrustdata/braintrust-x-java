@@ -5,7 +5,6 @@ import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
@@ -112,13 +111,8 @@ public final class BraintrustTracing {
             // The Java OTLP HTTP exporter uses the exact endpoint we provide
             var exporterEndpoint = config.apiUrl() + "/otel/v1/traces";
 
-            // Create the OTLP HTTP exporter
-            SpanExporter exporter =
-                    OtlpHttpSpanExporter.builder()
-                            .setEndpoint(exporterEndpoint)
-                            .addHeader("Authorization", "Bearer " + config.apiKey())
-                            .setTimeout(config.requestTimeout())
-                            .build();
+            // Create the custom Braintrust exporter that handles x-bt-parent header
+            SpanExporter exporter = new BraintrustSpanExporter(config);
 
             // Create resource first so BraintrustSpanProcessor can access service.name
             var resourceBuilder =
