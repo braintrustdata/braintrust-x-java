@@ -4,6 +4,7 @@ import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -80,49 +81,98 @@ public final class Evaluation<INPUT, OUTPUT> {
         try (var scope = span.makeCurrent()) {
             var startTime = Instant.now();
 
-            // Add input to span
-            span.setAttribute("input", String.valueOf(input));
+            // Add input to span - extract the question field for MathProblem
+            if (input != null) {
+                try {
+                    // For MathProblem record, get the question field
+                    var questionField = input.getClass().getDeclaredField("question");
+                    questionField.setAccessible(true);
+                    var question = questionField.get(input);
+                    if (question != null) {
+                        span.setAttribute("input", question.toString());
+                    }
+                } catch (NoSuchFieldException | IllegalAccessException e) {
+                    // Fallback to toString
+                    span.setAttribute("input", input.toString());
+                }
+            }
 
             // Try to extract expected value if the input has an "expected" field
             try {
-                var inputClass = input.getClass();
-                var expectedField = inputClass.getDeclaredField("expected");
+                var expectedField = input.getClass().getDeclaredField("expected");
                 expectedField.setAccessible(true);
                 var expectedValue = expectedField.get(input);
                 if (expectedValue != null) {
-                    span.setAttribute("expected", String.valueOf(expectedValue));
+                    span.setAttribute("expected", expectedValue.toString());
                 }
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 // No expected field, which is fine
             }
 
-            // Run the task
-            OUTPUT output;
+            OUTPUT output = null;
             @Nullable Exception error = null;
 
-            try {
-                output = options.timeout != null ? runWithTimeout(input) : task.apply(input);
-            } catch (Exception e) {
-                output = null;
-                error = e;
-                span.recordException(e);
+            // Create a child "task" span for the actual execution
+            var taskSpan =
+                    tracer.spanBuilder("task")
+                            .setParent(Context.current())
+                            .setSpanKind(SpanKind.INTERNAL)
+                            .setAttribute("type", "task")
+                            .startSpan();
+
+            try (var taskScope = taskSpan.makeCurrent()) {
+                // Run the task
+                try {
+                    output = options.timeout != null ? runWithTimeout(input) : task.apply(input);
+                } catch (Exception e) {
+                    error = e;
+                    taskSpan.recordException(e);
+                    taskSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                }
+            } finally {
+                taskSpan.end();
             }
 
             var duration = Duration.between(startTime, Instant.now());
 
             // Add output to span
             if (output != null) {
-                span.setAttribute("output", String.valueOf(output));
+                // Extract the result from Answer record
+                try {
+                    var resultField = output.getClass().getDeclaredField("result");
+                    resultField.setAccessible(true);
+                    var result = resultField.get(output);
+                    if (result != null) {
+                        span.setAttribute("output", result.toString());
+                    }
+                } catch (NoSuchFieldException | IllegalAccessException e) {
+                    span.setAttribute("output", output.toString());
+                }
             }
 
-            // Calculate scores
-            var scores = calculateScores(input, output, error);
+            // Calculate scores in a child "score" span
+            Map<String, Double> scores = Map.of();
+            if (error == null && output != null) {
+                var scoreSpan =
+                        tracer.spanBuilder("score")
+                                .setParent(Context.current())
+                                .setSpanKind(SpanKind.INTERNAL)
+                                .setAttribute("type", "score")
+                                .startSpan();
 
-            // Add scores to span
-            scores.forEach(
-                    (name, score) -> {
-                        span.setAttribute("score." + name, score);
-                    });
+                try (var scoreScope = scoreSpan.makeCurrent()) {
+                    scores = calculateScores(input, output, error);
+
+                    // Add scores to the parent eval span
+                    scores.forEach(
+                            (name, score) -> {
+                                span.setAttribute("score." + name, score);
+                                scoreSpan.setAttribute(name, score);
+                            });
+                } finally {
+                    scoreSpan.end();
+                }
+            }
 
             return new EvaluationResult<>(
                     input, output, scores, duration, Optional.ofNullable(error));
