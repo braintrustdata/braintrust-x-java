@@ -169,6 +169,18 @@ public final class Evaluation<INPUT, OUTPUT> {
                                 span.setAttribute("score." + name, score);
                                 scoreSpan.setAttribute(name, score);
                             });
+
+                    // Also set scores as JSON for Braintrust parsing (matching Go SDK)
+                    if (!scores.isEmpty()) {
+                        try {
+                            var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                            var scoresJson = objectMapper.writeValueAsString(scores);
+                            scoreSpan.setAttribute("braintrust.scores", scoresJson);
+                        } catch (Exception e) {
+                            // Log error but don't fail the evaluation
+                            span.recordException(e);
+                        }
+                    }
                 } finally {
                     scoreSpan.end();
                 }
