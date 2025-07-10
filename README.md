@@ -289,15 +289,28 @@ git commit --no-verify
 
 ## Running Examples
 
+### Setup Environment
+
 ```bash
-# Quick start example
-./gradlew :examples:run
+# Copy the example environment file
+cp .env.example .env
 
-# Evaluation example
-./gradlew :examples:runEvaluation
+# Edit .env and add your Braintrust API key
+# BRAINTRUST_API_KEY=your-actual-api-key
+```
 
-# Dataset example
-./gradlew :examples:runDataset
+### Run Examples
+
+```bash
+# Use the run-with-env.sh script to load .env variables
+./run-with-env.sh :examples:run
+
+# Go-style experiment example
+./run-with-env.sh :examples:runGoStyleExperiment
+
+# Other examples
+./run-with-env.sh :examples:runEvaluation
+./run-with-env.sh :examples:runDataset
 ```
 
 ## Testing

@@ -33,11 +33,32 @@ public class SimpleExperimentWithRegistration {
         System.out.println("Project ID: " + project.id());
 
         // Step 2: Register an experiment (same as Go: api.RegisterExperiment)
+        var experimentName = "accuracy-test-" + System.currentTimeMillis();
         System.out.println("\nRegistering experiment...");
-        var experiment =
-                Experiment.registerExperimentSync(
-                        "accuracy-test-" + System.currentTimeMillis(), project.id());
+        var experiment = Experiment.registerExperimentSync(experimentName, project.id());
         System.out.println("Experiment ID: " + experiment.id());
+
+        // Get the app URL from config
+        var appUrl = config.appUrl().toString().replaceAll("/$", "");
+        // URLEncoder.encode uses + for spaces, but we need %20 for URL paths
+        var projectNameEncoded =
+                java.net.URLEncoder.encode(project.name(), java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("+", "%20");
+
+        // For staging, we need to handle the org differently
+        var baseExperimentUrl =
+                appUrl.contains("staging")
+                        ? String.format(
+                                "%s/app/%s/p/%s/experiments/%s",
+                                appUrl, project.orgId(), projectNameEncoded, experimentName)
+                        : String.format(
+                                "%s/app/braintrustdata.com/p/%s/experiments/%s",
+                                appUrl, projectNameEncoded, experimentName);
+
+        // TODO: Add comparison parameter if there's a previous experiment
+        var experimentUrl = baseExperimentUrl;
+
+        System.out.println("\nExperiment " + experimentName + " is running at " + experimentUrl);
 
         // Step 3: Set up tracing context with experiment (similar to Go's trace.SetParent)
         var braintrustContext = BraintrustContext.forExperiment(experiment.id());
@@ -54,6 +75,8 @@ public class SimpleExperimentWithRegistration {
 
         // Step 5: Run evaluation with the experiment
         System.out.println("\nRunning evaluation...");
+        System.out.printf("Math Problem Solver (data): %d items%n", problems.size());
+
         var evaluation =
                 Evaluation.<MathProblem, Answer>builder()
                         .name("Math Problem Solver")
@@ -74,27 +97,48 @@ public class SimpleExperimentWithRegistration {
                         .experimentId(experiment.id()) // Link to the registered experiment
                         .build();
 
+        var startTime = System.currentTimeMillis();
         var results = evaluation.run();
+        var endTime = System.currentTimeMillis();
+
+        System.out.printf(
+                "Math Problem Solver (tasks): %d/%d completed in %.2fs%n",
+                problems.size(), problems.size(), (endTime - startTime) / 1000.0);
 
         // Step 6: Print results
-        System.out.println("\n=== Results ===");
-        var summary = results.summary();
-        System.out.printf("Total problems: %d%n", summary.totalCount());
-        System.out.printf("Success rate: %.1f%%%n", summary.successRate() * 100);
+        System.out.println("\n========================= SUMMARY =========================");
+        System.out.println(experimentName + ":");
 
+        var summary = results.summary();
+
+        // Score summaries
         summary.scoreStatistics()
                 .forEach(
                         (scorer, stats) -> {
-                            System.out.printf("\n%s:%n", scorer);
-                            System.out.printf("  Mean: %.3f%n", stats.mean());
-                            System.out.printf("  Min: %.3f%n", stats.min());
-                            System.out.printf("  Max: %.3f%n", stats.max());
+                            System.out.printf(
+                                    "%.2f%% '%s' score (mean: %.3f, min: %.3f, max: %.3f)%n",
+                                    stats.mean() * 100,
+                                    scorer,
+                                    stats.mean(),
+                                    stats.min(),
+                                    stats.max());
                         });
 
+        System.out.println();
+        System.out.printf(
+                "%.2fs duration (%.2fs total across %d items)%n",
+                (endTime - startTime) / 1000.0,
+                summary.averageDuration().toMillis() * summary.totalCount() / 1000.0,
+                summary.totalCount());
+
+        if (summary.errorCount() > 0) {
+            System.out.printf(
+                    "%d errors (%.1f%% error rate)%n",
+                    summary.errorCount(), (summary.errorCount() * 100.0) / summary.totalCount());
+        }
+
         System.out.println("\n=== View in Braintrust ===");
-        System.out.println("Project: " + project.name());
-        System.out.println("Experiment: " + experiment.name());
-        System.out.println("Dashboard: https://www.braintrust.dev");
+        System.out.println("See results for " + experimentName + " at " + experimentUrl);
 
         // Clean up context
         context.close();
