@@ -67,7 +67,7 @@ public class TriviaEvaluation {
         var experimentUrl =
                 String.format(
                         "%s/app/%s/p/%s/experiments/%s",
-                        appUrl, project.orgId(), projectNameEncoded, experimentName);
+                        appUrl, project.name(), projectNameEncoded, experimentName);
 
         System.out.println("\nExperiment " + experimentName + " is running at " + experimentUrl);
 
