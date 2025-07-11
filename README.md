@@ -23,6 +23,21 @@ dependencies {
 
 ## Quick Start
 
+### Try It Out
+
+```bash
+# 1. Set up environment
+cp .env.example .env
+# Edit .env with your BRAINTRUST_API_KEY and OPENAI_API_KEY
+
+# 2. Run the canonical evaluation example
+./run-with-env.sh :examples:runTriviaEval
+
+# 3. View results in Braintrust UI (link printed in output)
+```
+
+### Basic Usage
+
 ```java
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.trace.BraintrustTracing;
@@ -42,7 +57,20 @@ var openTelemetry = BraintrustTracing.quickstart(config);
 
 ## Evaluation Framework
 
-The evaluation framework uses Java generics and functional interfaces for type-safe, flexible testing:
+The evaluation framework uses Java generics and functional interfaces for type-safe, flexible testing.
+
+### Canonical Example: TriviaEvaluation
+
+See `examples/src/main/java/dev/braintrust/examples/TriviaEvaluation.java` for a complete real-world example that:
+- Makes actual OpenAI API calls using the wrapped client
+- Evaluates LLM responses against ground truth
+- Scores based on accuracy and response time
+- Tracks token usage and costs
+- Demonstrates proper OpenTelemetry integration
+
+Run it with: `./run-with-env.sh :examples:runTriviaEval`
+
+### Basic Usage
 
 ```java
 // Define your test cases using records
@@ -133,20 +161,39 @@ config.defaultProjectId()
 ## Library Instrumentation
 
 ### OpenAI Integration
+
+The SDK provides a wrapped OpenAI client that automatically adds Braintrust-specific tracing:
+
 ```java
-// Wrap OpenAI calls with tracing
-OpenAIInterceptor.traceCompletion(
-    "chat.completion",
-    request,
-    req -> new RequestDetails(req.getModel(), req.getMaxTokens(), req.getTemperature()),
-    resp -> new ResponseDetails(new Usage(
-        resp.getUsage().getPromptTokens(),
-        resp.getUsage().getCompletionTokens(),
-        resp.getUsage().getTotalTokens()
-    )),
-    () -> openAiService.createCompletion(request)
+import dev.braintrust.openai.BraintrustOpenAI;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+
+// Create wrapped client
+var openAI = OpenAIOkHttpClient.builder().apiKey(apiKey).build();
+var wrappedClient = BraintrustOpenAI.wrap(openAI, tracer);
+
+// Use it exactly like the regular OpenAI client
+var response = wrappedClient.chat().completions().create(
+    ChatCompletionCreateParams.builder()
+        .model(ChatModel.GPT_4O_MINI)
+        .addSystemMessage("You are a helpful assistant.")
+        .addUserMessage("What is 2 + 2?")
+        .build(),
+    // Optionally provide message info for better tracing
+    List.of(
+        BraintrustOpenAI.MessageInfo.system("You are a helpful assistant."),
+        BraintrustOpenAI.MessageInfo.user("What is 2 + 2?")
+    )
 );
 ```
+
+This automatically captures:
+- Input messages as `braintrust.input_json`
+- Output responses as `braintrust.output_json`
+- Model metadata as `braintrust.metadata_json`
+- Token usage as `braintrust.metrics_json`
+
+See the TriviaEvaluation example for a complete working implementation.
 
 ### Anthropic Integration
 ```java
@@ -295,23 +342,46 @@ git commit --no-verify
 # Copy the example environment file
 cp .env.example .env
 
-# Edit .env and add your Braintrust API key
+# Edit .env and add your API keys:
 # BRAINTRUST_API_KEY=your-actual-api-key
+# OPENAI_API_KEY=your-openai-api-key  # Required for TriviaEvaluation example
 ```
 
-### Run Examples
+### Canonical Examples
 
+#### Logging and Tracing
 ```bash
-# Use the run-with-env.sh script to load .env variables
-./run-with-env.sh :examples:run
+# Basic OpenTelemetry example with manual spans
+./run-with-env.sh :examples:runOpenTelemetry
 
-# Go-style experiment example
+# Simple logging example
+./run-with-env.sh :examples:runSimple
+
+# Project management example
+./run-with-env.sh :examples:runProject
+```
+
+#### Evaluations
+```bash
+# Canonical evaluation example - runs a real LLM evaluation with OpenAI
+# This example evaluates GPT-4o-mini on trivia questions with accuracy scoring
+./run-with-env.sh :examples:runTriviaEval
+
+# Go-style experiment example (simple math evaluation)
 ./run-with-env.sh :examples:runGoStyleExperiment
 
-# Other examples
-./run-with-env.sh :examples:runEvaluation
-./run-with-env.sh :examples:runDataset
+# Other evaluation examples
+./run-with-env.sh :examples:runSimpleExperiment
+./run-with-env.sh :examples:runExperimentWithApi
 ```
+
+### What Each Example Demonstrates
+
+- **`:examples:runOpenTelemetry`** - Manual span creation, nested spans, and OpenAI integration
+- **`:examples:runTriviaEval`** - Real LLM evaluation with OpenAI, scoring, and metrics tracking
+- **`:examples:runGoStyleExperiment`** - Mimics Go SDK patterns with automatic project/experiment registration
+- **`:examples:runSimple`** - Basic tracing without evaluations
+- **`:examples:runProject`** - Project and dataset management via API
 
 ## Testing
 
