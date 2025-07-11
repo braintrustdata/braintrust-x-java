@@ -75,8 +75,8 @@ public final class Evaluation<INPUT, OUTPUT> {
                     BraintrustSpanProcessor.PARENT, "experiment_id:" + options.experimentId);
         }
 
-        // Add the type attribute to match Go SDK
-        span.setAttribute("type", "eval");
+        // Set span attributes matching Go SDK pattern
+        span.setAttribute("braintrust.span_attributes", "{\"type\":\"eval\"}");
 
         try (var scope = span.makeCurrent()) {
             var startTime = Instant.now();
@@ -95,6 +95,15 @@ public final class Evaluation<INPUT, OUTPUT> {
                     // Fallback to toString
                     span.setAttribute("input", input.toString());
                 }
+
+                // Also set input as JSON matching Go SDK
+                try {
+                    var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    var inputJson = objectMapper.writeValueAsString(input);
+                    span.setAttribute("braintrust.input_json", inputJson);
+                } catch (Exception e) {
+                    // Ignore JSON serialization errors
+                }
             }
 
             // Try to extract expected value if the input has an "expected" field
@@ -104,6 +113,16 @@ public final class Evaluation<INPUT, OUTPUT> {
                 var expectedValue = expectedField.get(input);
                 if (expectedValue != null) {
                     span.setAttribute("expected", expectedValue.toString());
+
+                    // Also set as JSON attribute
+                    try {
+                        var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        var expectedJson = objectMapper.writeValueAsString(expectedValue);
+                        span.setAttribute("braintrust.expected", expectedJson);
+                    } catch (Exception e) {
+                        // Fallback to string value
+                        span.setAttribute("braintrust.expected", expectedValue.toString());
+                    }
                 }
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 // No expected field, which is fine
@@ -117,8 +136,10 @@ public final class Evaluation<INPUT, OUTPUT> {
                     tracer.spanBuilder("task")
                             .setParent(Context.current())
                             .setSpanKind(SpanKind.INTERNAL)
-                            .setAttribute("type", "task")
                             .startSpan();
+
+            // Set span attributes matching Go SDK pattern
+            taskSpan.setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}");
 
             try (var taskScope = taskSpan.makeCurrent()) {
                 // Run the task
@@ -157,8 +178,10 @@ public final class Evaluation<INPUT, OUTPUT> {
                         tracer.spanBuilder("score")
                                 .setParent(Context.current())
                                 .setSpanKind(SpanKind.INTERNAL)
-                                .setAttribute("type", "score")
                                 .startSpan();
+
+                // Set span attributes matching Go SDK pattern
+                scoreSpan.setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}");
 
                 try (var scoreScope = scoreSpan.makeCurrent()) {
                     scores = calculateScores(input, output, error);
