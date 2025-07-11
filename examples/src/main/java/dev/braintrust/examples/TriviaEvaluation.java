@@ -65,13 +65,9 @@ public class TriviaEvaluation {
                 java.net.URLEncoder.encode(project.name(), java.nio.charset.StandardCharsets.UTF_8)
                         .replace("+", "%20");
         var experimentUrl =
-                appUrl.contains("staging")
-                        ? String.format(
-                                "%s/app/%s/p/%s/experiments/%s",
-                                appUrl, project.orgId(), projectNameEncoded, experimentName)
-                        : String.format(
-                                "%s/app/braintrustdata.com/p/%s/experiments/%s",
-                                appUrl, projectNameEncoded, experimentName);
+                String.format(
+                        "%s/app/%s/p/%s/experiments/%s",
+                        appUrl, project.orgId(), projectNameEncoded, experimentName);
 
         System.out.println("\nExperiment " + experimentName + " is running at " + experimentUrl);
 
