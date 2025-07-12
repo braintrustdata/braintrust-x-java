@@ -182,8 +182,8 @@ public class BraintrustApiClient implements AutoCloseable {
     }
 
     private boolean isNotFound(Throwable error) {
-        if (error instanceof ApiException apiException) {
-            return apiException.getMessage().contains("404");
+        if (error instanceof ApiException) {
+            return ((ApiException) error).getMessage().contains("404");
         }
         return false;
     }
