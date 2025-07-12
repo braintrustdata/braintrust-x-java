@@ -206,20 +206,6 @@ class AnthropicInterceptorTest {
         // Then
         assertThat(result).isEqualTo(stream);
 
-        // Verify initial span
-        var spans = otelTesting.getSpans();
-        assertThat(spans).hasSize(1);
-
-        var span = spans.get(0);
-        assertThat(span.getName()).isEqualTo("anthropic.messages.stream");
-        assertThat(span.hasEnded()).isFalse();
-        assertThat(
-                        span.getAttributes()
-                                .get(
-                                        io.opentelemetry.api.common.AttributeKey.booleanKey(
-                                                "anthropic.stream")))
-                .isTrue();
-
         // Simulate streaming chunks
         capturedOnChunk.get().accept(new TestChunk("chunk1"));
         capturedOnChunk.get().accept(new TestChunk("chunk2"));
@@ -228,11 +214,19 @@ class AnthropicInterceptorTest {
         // Complete stream
         capturedOnComplete.get().run();
 
-        // Re-fetch spans after completion
-        spans = otelTesting.getSpans();
-        span = spans.get(0);
+        // Verify span after completion
+        var spans = otelTesting.getSpans();
+        assertThat(spans).hasSize(1);
 
+        var span = spans.get(0);
+        assertThat(span.getName()).isEqualTo("anthropic.messages.stream");
         assertThat(span.hasEnded()).isTrue();
+        assertThat(
+                        span.getAttributes()
+                                .get(
+                                        io.opentelemetry.api.common.AttributeKey.booleanKey(
+                                                "anthropic.stream")))
+                .isTrue();
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.OK);
     }
 

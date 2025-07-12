@@ -38,14 +38,11 @@ class EvaluationIntegrationTest {
                         .build();
 
         // Set up tracing with in-memory exporter
+        var braintrustProcessor =
+                new BraintrustSpanProcessor(config, SimpleSpanProcessor.create(spanExporter));
+
         var tracerProvider =
-                SdkTracerProvider.builder()
-                        .addSpanProcessor(
-                                new BraintrustSpanProcessor.Builder(config)
-                                        .withExporter(spanExporter)
-                                        .build())
-                        .addSpanProcessor(SimpleSpanProcessor.create(spanExporter))
-                        .build();
+                SdkTracerProvider.builder().addSpanProcessor(braintrustProcessor).build();
 
         GlobalOpenTelemetry.resetForTest();
         GlobalOpenTelemetry.set(
@@ -84,20 +81,17 @@ class EvaluationIntegrationTest {
 
         // Find evaluation span
         var evalSpan =
-                spans.stream()
-                        .filter(s -> s.getName().equals("evaluation"))
-                        .findFirst()
-                        .orElseThrow();
+                spans.stream().filter(s -> s.getName().equals("eval")).findFirst().orElseThrow();
 
         assertThat(
                         evalSpan.getAttributes()
                                 .get(
                                         io.opentelemetry.api.common.AttributeKey.stringKey(
-                                                "evaluation.name")))
-                .isEqualTo("traced-evaluation");
+                                                "braintrust.span_attributes")))
+                .isEqualTo("{\"type\":\"eval\"}");
 
         // Verify task spans
-        var taskSpans = spans.stream().filter(s -> s.getName().equals("evaluation.task")).toList();
+        var taskSpans = spans.stream().filter(s -> s.getName().equals("task")).toList();
         assertThat(taskSpans).hasSize(3);
     }
 
@@ -128,10 +122,7 @@ class EvaluationIntegrationTest {
         // Verify experiment parent was set
         var spans = spanExporter.getFinishedSpanItems();
         var evalSpan =
-                spans.stream()
-                        .filter(s -> s.getName().equals("evaluation"))
-                        .findFirst()
-                        .orElseThrow();
+                spans.stream().filter(s -> s.getName().equals("eval")).findFirst().orElseThrow();
 
         assertThat(evalSpan.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID))
                 .isEqualTo("exp-123");
@@ -175,7 +166,7 @@ class EvaluationIntegrationTest {
 
         // Verify parallel execution via span timing
         var spans = spanExporter.getFinishedSpanItems();
-        var taskSpans = spans.stream().filter(s -> s.getName().equals("evaluation.task")).toList();
+        var taskSpans = spans.stream().filter(s -> s.getName().equals("task")).toList();
 
         assertThat(taskSpans).hasSize(100);
 
@@ -238,7 +229,7 @@ class EvaluationIntegrationTest {
         var spans = spanExporter.getFinishedSpanItems();
         var errorSpans =
                 spans.stream()
-                        .filter(s -> s.getName().equals("evaluation.task"))
+                        .filter(s -> s.getName().equals("task"))
                         .filter(
                                 s ->
                                         s.getStatus().getStatusCode()
@@ -310,9 +301,9 @@ class EvaluationIntegrationTest {
 
         // Verify scores are recorded in spans
         var spans = spanExporter.getFinishedSpanItems();
-        var taskSpans = spans.stream().filter(s -> s.getName().equals("evaluation.task")).toList();
+        var evalSpans = spans.stream().filter(s -> s.getName().equals("eval")).toList();
 
-        taskSpans.forEach(
+        evalSpans.forEach(
                 span -> {
                     var attrs = span.getAttributes();
                     assertThat(

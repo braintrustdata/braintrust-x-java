@@ -30,6 +30,7 @@ public class OpenAIInterceptor {
             RequestExtractor<REQ> requestExtractor,
             ResponseExtractor<RESP> responseExtractor,
             Supplier<RESP> executeRequest) {
+        // Get tracer lazily to ensure test setup is complete
         var tracer = BraintrustTracing.getTracer();
         var requestDetails = requestExtractor.extract(request);
 
@@ -100,6 +101,7 @@ public class OpenAIInterceptor {
             RequestExtractor<REQ> requestExtractor,
             Supplier<STREAM> executeRequest,
             StreamWrapper<STREAM, RESP> streamWrapper) {
+        // Get tracer lazily to ensure test setup is complete
         var tracer = BraintrustTracing.getTracer();
         var requestDetails = requestExtractor.extract(request);
 
