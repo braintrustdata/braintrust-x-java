@@ -74,7 +74,7 @@ class BraintrustApiClientTest {
                         argThat(
                                 request -> {
                                     assertThat(request.uri().toString())
-                                            .isEqualTo("https://api.test.dev/projects");
+                                            .isEqualTo("https://api.test.dev/v1/project");
                                     assertThat(request.method()).isEqualTo("POST");
                                     assertThat(request.headers().firstValue("Authorization"))
                                             .hasValue("Bearer test-api-key");
@@ -229,7 +229,7 @@ class BraintrustApiClientTest {
                                 request -> {
                                     assertThat(request.uri().toString())
                                             .isEqualTo(
-                                                    "https://api.test.dev/datasets/dataset-123/insert");
+                                                    "https://api.test.dev/v1/dataset/dataset-123/insert");
                                     assertThat(request.method()).isEqualTo("POST");
                                     return true;
                                 }),

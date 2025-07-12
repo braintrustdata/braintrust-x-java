@@ -175,10 +175,8 @@ class BraintrustTracingTest {
         assertThat(spans).hasSize(1);
 
         var spanData = spans.get(0);
-        assertThat(spanData.getAttributes().get(BraintrustSpanProcessor.PARENT_PROJECT_ID))
-                .isEqualTo("project-123");
-        assertThat(spanData.getAttributes().get(BraintrustSpanProcessor.PARENT_TYPE))
-                .isEqualTo("project");
+        assertThat(spanData.getAttributes().get(BraintrustSpanProcessor.PARENT))
+                .isEqualTo("project_id:project-123");
     }
 
     @Test
@@ -200,10 +198,8 @@ class BraintrustTracingTest {
         assertThat(spans).hasSize(1);
 
         var spanData = spans.get(0);
-        assertThat(spanData.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID))
-                .isEqualTo("exp-456");
-        assertThat(spanData.getAttributes().get(BraintrustSpanProcessor.PARENT_TYPE))
-                .isEqualTo("experiment");
+        assertThat(spanData.getAttributes().get(BraintrustSpanProcessor.PARENT))
+                .isEqualTo("experiment_id:exp-456");
     }
 
     @Test

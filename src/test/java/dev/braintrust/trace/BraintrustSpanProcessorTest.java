@@ -2,7 +2,6 @@ package dev.braintrust.trace;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.atLeastOnce;
 
 import dev.braintrust.config.BraintrustConfig;
 import io.opentelemetry.context.Context;
@@ -41,15 +40,13 @@ class BraintrustSpanProcessorTest {
     void testDefaultProjectIdIsAdded() {
         // Given
         var span = mock(ReadWriteSpan.class);
-        when(span.getAttribute(BraintrustSpanProcessor.PARENT_PROJECT_ID)).thenReturn(null);
-        when(span.getAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID)).thenReturn(null);
+        when(span.getAttribute(BraintrustSpanProcessor.PARENT)).thenReturn(null);
 
         // When
         processor.onStart(Context.root(), span);
 
         // Then
-        verify(span).setAttribute(BraintrustSpanProcessor.PARENT_PROJECT_ID, "default-project");
-        verify(span).setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "project");
+        verify(span).setAttribute(BraintrustSpanProcessor.PARENT, "project_id:default-project");
         verify(mockDelegate).onStart(any(), eq(span));
     }
 
@@ -57,6 +54,7 @@ class BraintrustSpanProcessorTest {
     void testProjectIdFromContext() {
         // Given
         var span = mock(ReadWriteSpan.class);
+        when(span.getAttribute(BraintrustSpanProcessor.PARENT)).thenReturn(null);
         var context =
                 BraintrustContext.forProject("context-project").storeInContext(Context.root());
 
@@ -64,15 +62,14 @@ class BraintrustSpanProcessorTest {
         processor.onStart(context, span);
 
         // Then
-        verify(span).setAttribute(BraintrustSpanProcessor.PARENT_PROJECT_ID, "context-project");
-        // Parent type might be set multiple times due to both project and parent type being set
-        verify(span, atLeastOnce()).setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "project");
+        verify(span).setAttribute(BraintrustSpanProcessor.PARENT, "project_id:context-project");
     }
 
     @Test
     void testExperimentIdFromContext() {
         // Given
         var span = mock(ReadWriteSpan.class);
+        when(span.getAttribute(BraintrustSpanProcessor.PARENT)).thenReturn(null);
         var context =
                 BraintrustContext.forExperiment("experiment-123").storeInContext(Context.root());
 
@@ -80,8 +77,7 @@ class BraintrustSpanProcessorTest {
         processor.onStart(context, span);
 
         // Then
-        verify(span).setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, "experiment-123");
-        verify(span).setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment");
+        verify(span).setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:experiment-123");
     }
 
     @Test
