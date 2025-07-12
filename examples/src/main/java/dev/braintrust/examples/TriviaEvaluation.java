@@ -61,13 +61,18 @@ public class TriviaEvaluation {
 
         // Show experiment URL
         var appUrl = config.appUrl().toString().replaceAll("/$", "");
+        var orgNameEncoded =
+                java.net.URLEncoder.encode(
+                                config.orgName().orElse("unknown"),
+                                java.nio.charset.StandardCharsets.UTF_8)
+                        .replace("+", "%20");
         var projectNameEncoded =
                 java.net.URLEncoder.encode(project.name(), java.nio.charset.StandardCharsets.UTF_8)
                         .replace("+", "%20");
         var experimentUrl =
                 String.format(
                         "%s/app/%s/p/%s/experiments/%s",
-                        appUrl, project.name(), projectNameEncoded, experimentName);
+                        appUrl, orgNameEncoded, projectNameEncoded, experimentName);
 
         System.out.println("\nExperiment " + experimentName + " is running at " + experimentUrl);
 

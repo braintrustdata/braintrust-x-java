@@ -1,5 +1,6 @@
 package dev.braintrust.config;
 
+import dev.braintrust.api.BraintrustApiClient;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
@@ -18,6 +19,7 @@ public final class BraintrustConfig {
     private final URI apiUrl;
     private final URI appUrl;
     @Nullable private final String defaultProjectId;
+    @Nullable private final String orgName;
     private final boolean enableTraceConsoleLog;
     private final boolean debug;
     private final Duration requestTimeout;
@@ -27,6 +29,7 @@ public final class BraintrustConfig {
         this.apiUrl = builder.apiUrl;
         this.appUrl = builder.appUrl;
         this.defaultProjectId = builder.defaultProjectId;
+        this.orgName = builder.orgName;
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
         this.debug = builder.debug;
         this.requestTimeout = builder.requestTimeout;
@@ -48,6 +51,10 @@ public final class BraintrustConfig {
         return Optional.ofNullable(defaultProjectId);
     }
 
+    public Optional<String> orgName() {
+        return Optional.ofNullable(orgName);
+    }
+
     public boolean enableTraceConsoleLog() {
         return enableTraceConsoleLog;
     }
@@ -65,12 +72,14 @@ public final class BraintrustConfig {
         return new Builder();
     }
 
-    /** Creates a config from environment variables only. */
+    /** Creates a config from environment variables and retrieves organization name from API. */
     public static BraintrustConfig fromEnvironment() {
         return builder().build();
     }
 
-    /** Creates a config with a consumer for customization. */
+    /**
+     * Creates a config with a consumer for customization and retrieves organization name from API.
+     */
     public static BraintrustConfig create(Consumer<Builder> customizer) {
         var builder = builder();
         customizer.accept(builder);
@@ -82,6 +91,7 @@ public final class BraintrustConfig {
         private URI apiUrl;
         private URI appUrl;
         private String defaultProjectId;
+        private String orgName;
         private boolean enableTraceConsoleLog;
         private boolean debug;
         private Duration requestTimeout = Duration.ofSeconds(30);
@@ -125,6 +135,11 @@ public final class BraintrustConfig {
             return this;
         }
 
+        public Builder orgName(String orgName) {
+            this.orgName = orgName;
+            return this;
+        }
+
         public Builder enableTraceConsoleLog(boolean enable) {
             this.enableTraceConsoleLog = enable;
             return this;
@@ -146,7 +161,38 @@ public final class BraintrustConfig {
                         "API key is required. Set BRAINTRUST_API_KEY environment variable or use"
                                 + " apiKey() method.");
             }
+
+            // If orgName is not already set, try to retrieve it from the API
+            if (orgName == null || orgName.isBlank()) {
+                try {
+                    retrieveOrgName();
+                } catch (Exception e) {
+                    // Log warning but don't fail the build if org name retrieval fails
+                    System.err.println(
+                            "Warning: Failed to retrieve organization name: " + e.getMessage());
+                }
+            }
+
             return new BraintrustConfig(this);
+        }
+
+        private void retrieveOrgName() {
+            // Create a temporary config without orgName to avoid circular dependency
+            var tempConfig = new BraintrustConfig(this);
+
+            try (var apiClient = new BraintrustApiClient(tempConfig)) {
+                var loginResponse = apiClient.login().join();
+                var orgInfo = loginResponse.orgInfo();
+
+                if (orgInfo != null && !orgInfo.isEmpty()) {
+                    // Use the first organization by default, similar to Python SDK
+                    this.orgName = orgInfo.get(0).name();
+                } else {
+                    throw new RuntimeException("User is not part of any organizations");
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to retrieve organization information", e);
+            }
         }
 
         private static String getEnv(String key, String defaultValue) {
