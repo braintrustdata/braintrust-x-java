@@ -20,6 +20,7 @@ public class AnthropicInterceptor {
             RequestExtractor<REQ> requestExtractor,
             ResponseExtractor<RESP> responseExtractor,
             Supplier<RESP> executeRequest) {
+        // Get tracer lazily to ensure test setup is complete
         var tracer = BraintrustTracing.getTracer();
         var requestDetails = requestExtractor.extract(request);
 
@@ -75,6 +76,7 @@ public class AnthropicInterceptor {
             RequestExtractor<REQ> requestExtractor,
             ResponseExtractor<RESP> responseExtractor,
             Supplier<CompletableFuture<RESP>> executeRequest) {
+        // Get tracer lazily to ensure test setup is complete
         var tracer = BraintrustTracing.getTracer();
         var requestDetails = requestExtractor.extract(request);
 
@@ -134,6 +136,7 @@ public class AnthropicInterceptor {
             RequestExtractor<REQ> requestExtractor,
             Supplier<STREAM> executeRequest,
             StreamWrapper<STREAM> streamWrapper) {
+        // Get tracer lazily to ensure test setup is complete
         var tracer = BraintrustTracing.getTracer();
         var requestDetails = requestExtractor.extract(request);
 
