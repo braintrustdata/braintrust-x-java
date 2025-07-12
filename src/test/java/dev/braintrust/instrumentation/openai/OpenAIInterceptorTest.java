@@ -146,31 +146,22 @@ class OpenAIInterceptorTest {
         // Then
         assertThat(result).isEqualTo(stream);
 
-        // Force flush to ensure spans are available
-        // Note: OpenTelemetryExtension handles this automatically
+        // Simulate stream completion to close the span
+        capturedOnComplete.get().accept(new OpenAIInterceptor.Usage(200, 100, 300));
 
-        // Verify initial span
+        // Verify span after completion
         var spans = otelTesting.getSpans();
         assertThat(spans).hasSize(1);
 
         var span = spans.get(0);
         assertThat(span.getName()).isEqualTo("openai.chat.completion.stream");
-        assertThat(span.hasEnded()).isFalse();
+        assertThat(span.hasEnded()).isTrue();
         assertThat(
                         span.getAttributes()
                                 .get(
                                         io.opentelemetry.api.common.AttributeKey.booleanKey(
                                                 "openai.stream")))
                 .isTrue();
-
-        // Simulate stream completion
-        capturedOnComplete.get().accept(new OpenAIInterceptor.Usage(200, 100, 300));
-
-        // Re-fetch spans after completion
-        spans = otelTesting.getSpans();
-        span = spans.get(0);
-
-        assertThat(span.hasEnded()).isTrue();
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.OK);
         assertThat(span.getAttributes().get(BraintrustSpanProcessor.USAGE_PROMPT_TOKENS))
                 .isEqualTo(200L);
