@@ -109,6 +109,12 @@ public class BraintrustApiClient implements AutoCloseable {
                 .thenApply(DatasetList::datasets);
     }
 
+    /** Login to get user information including organization details. */
+    public CompletableFuture<LoginResponse> login() {
+        var request = new LoginRequest(config.apiKey());
+        return postAsync("/api/apikey/login", request, LoginResponse.class);
+    }
+
     // Low-level HTTP methods
 
     private <T> CompletableFuture<T> getAsync(String path, Class<T> responseType) {
@@ -176,8 +182,8 @@ public class BraintrustApiClient implements AutoCloseable {
     }
 
     private boolean isNotFound(Throwable error) {
-        if (error instanceof ApiException apiException) {
-            return apiException.getMessage().contains("404");
+        if (error instanceof ApiException) {
+            return ((ApiException) error).getMessage().contains("404");
         }
         return false;
     }
@@ -220,6 +226,7 @@ public class BraintrustApiClient implements AutoCloseable {
             String name,
             Optional<String> description,
             Optional<String> baseExperimentId) {
+
         public CreateExperimentRequest(String projectId, String name) {
             this(projectId, name, Optional.empty(), Optional.empty());
         }
@@ -263,4 +270,11 @@ public class BraintrustApiClient implements AutoCloseable {
     private record InsertEventsRequest(List<DatasetEvent> events) {}
 
     public record InsertEventsResponse(int insertedCount) {}
+
+    // User and Organization models for login functionality
+    public record OrganizationInfo(String id, String name) {}
+
+    private record LoginRequest(String token) {}
+
+    public record LoginResponse(List<OrganizationInfo> orgInfo) {}
 }
