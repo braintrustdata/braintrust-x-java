@@ -38,28 +38,6 @@ public class SimpleExperimentWithRegistration {
         var experiment = Experiment.registerExperimentSync(experimentName, project.id());
         System.out.println("Experiment ID: " + experiment.id());
 
-        // Get the app URL from config
-        var appUrl = config.appUrl().toString().replaceAll("/$", "");
-        // URLEncoder.encode uses + for spaces, but we need %20 for URL paths
-        var projectNameEncoded =
-                java.net.URLEncoder.encode(project.name(), java.nio.charset.StandardCharsets.UTF_8)
-                        .replace("+", "%20");
-
-        // For staging, we need to handle the org differently
-        var baseExperimentUrl =
-                appUrl.contains("staging")
-                        ? String.format(
-                                "%s/app/%s/p/%s/experiments/%s",
-                                appUrl, project.orgId(), projectNameEncoded, experimentName)
-                        : String.format(
-                                "%s/app/braintrustdata.com/p/%s/experiments/%s",
-                                appUrl, projectNameEncoded, experimentName);
-
-        // TODO: Add comparison parameter if there's a previous experiment
-        var experimentUrl = baseExperimentUrl;
-
-        System.out.println("\nExperiment " + experimentName + " is running at " + experimentUrl);
-
         // Step 3: Set up tracing context with experiment (similar to Go's trace.SetParent)
         var braintrustContext = BraintrustContext.forExperiment(experiment.id());
         var context = braintrustContext.storeInContext(Context.current()).makeCurrent();
@@ -138,7 +116,7 @@ public class SimpleExperimentWithRegistration {
         }
 
         System.out.println("\n=== View in Braintrust ===");
-        System.out.println("See results for " + experimentName + " at " + experimentUrl);
+        System.out.println("See results for " + experimentName + " in the Braintrust web app.");
 
         // Clean up context
         context.close();

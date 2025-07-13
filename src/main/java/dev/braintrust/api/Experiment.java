@@ -1,6 +1,8 @@
 package dev.braintrust.api;
 
 import dev.braintrust.config.BraintrustConfig;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -23,13 +25,7 @@ public final class Experiment {
     public static CompletableFuture<BraintrustApiClient.Experiment> registerExperiment(
             String name, String projectId) {
         var config = BraintrustConfig.fromEnvironment();
-        var client = new BraintrustApiClient(config);
-
-        var request =
-                new BraintrustApiClient.CreateExperimentRequest(
-                        projectId, name, Optional.empty(), Optional.empty());
-
-        return client.createExperiment(request);
+        return registerExperiment(name, projectId, config);
     }
 
     /**
@@ -48,7 +44,22 @@ public final class Experiment {
                 new BraintrustApiClient.CreateExperimentRequest(
                         projectId, name, Optional.empty(), Optional.empty());
 
-        return client.createExperiment(request);
+        return client.createExperiment(request)
+                .thenCompose(
+                        experiment -> {
+                            // Get project info to build URL
+                            return client.getProject(projectId)
+                                    .thenApply(
+                                            projectOpt -> {
+                                                projectOpt.ifPresent(
+                                                        project ->
+                                                                displayExperimentUrl(
+                                                                        experiment,
+                                                                        project,
+                                                                        config));
+                                                return experiment;
+                                            });
+                        });
     }
 
     /**
@@ -88,7 +99,12 @@ public final class Experiment {
                                             experimentName,
                                             Optional.empty(),
                                             Optional.empty());
-                            return client.createExperiment(request);
+                            return client.createExperiment(request)
+                                    .thenApply(
+                                            experiment -> {
+                                                displayExperimentUrl(experiment, project, config);
+                                                return experiment;
+                                            });
                         })
                 .thenApply(experiment -> experiment.id());
     }
@@ -115,6 +131,40 @@ public final class Experiment {
                 throw new RuntimeException("Failed to get or create experiment", e.getCause());
             }
             throw new RuntimeException("Failed to get or create experiment", e);
+        }
+    }
+
+    /**
+     * Displays the experiment URL to stdout automatically when an experiment is created.
+     *
+     * @param experiment The experiment that was created
+     * @param project The project containing the experiment
+     * @param config The Braintrust configuration
+     */
+    private static void displayExperimentUrl(
+            BraintrustApiClient.Experiment experiment,
+            BraintrustApiClient.Project project,
+            BraintrustConfig config) {
+        try {
+            var appUrl = config.appUrl().toString().replaceAll("/$", "");
+            var orgNameEncoded =
+                    URLEncoder.encode(config.orgName().orElse("unknown"), StandardCharsets.UTF_8)
+                            .replace("+", "%20");
+            var projectNameEncoded =
+                    URLEncoder.encode(project.name(), StandardCharsets.UTF_8).replace("+", "%20");
+            var experimentNameEncoded =
+                    URLEncoder.encode(experiment.name(), StandardCharsets.UTF_8)
+                            .replace("+", "%20");
+            var experimentUrl =
+                    String.format(
+                            "%s/app/%s/p/%s/experiments/%s",
+                            appUrl, orgNameEncoded, projectNameEncoded, experimentNameEncoded);
+
+            System.out.println(
+                    "Experiment " + experiment.name() + " is running at " + experimentUrl);
+        } catch (Exception e) {
+            // Don't fail experiment creation if URL display fails
+            System.err.println("Warning: Could not display experiment URL: " + e.getMessage());
         }
     }
 }
