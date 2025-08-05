@@ -92,6 +92,13 @@ public class BraintrustSpanExporter implements SpanExporter {
                                             "Created exporter with x-bt-parent: {}", p);
                                 }
 
+                                // If SSLContext is set, then apply it
+                                if (config.sslContext() != null
+                                        && config.x509TrustManager() != null) {
+                                    exporterBuilder.setSslContext(
+                                            config.sslContext(), config.x509TrustManager());
+                                }
+
                                 return exporterBuilder.build();
                             });
 
