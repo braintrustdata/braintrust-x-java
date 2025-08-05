@@ -122,6 +122,7 @@ publishing {
     }
 }
 
+
 // Configure Spotless for code formatting
 spotless {
     java {
