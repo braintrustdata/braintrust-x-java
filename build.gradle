@@ -117,21 +117,11 @@ publishing {
                         email = 'support@braintrust.dev'
                     }
                 }
-
-                scm {
-                    connection = 'scm:git:git://github.com/braintrustdata/braintrust-x-java.git'
-                    developerConnection = 'scm:git:ssh://github.com/braintrustdata/braintrust-x-java.git'
-                    url = 'https://github.com/braintrustdata/braintrust-x-java'
-                }
             }
         }
     }
 }
 
-// Configure javadoc to not fail on warnings
-javadoc {
-    options.addStringOption('Xdoclint:none', '-quiet')
-}
 
 // Configure Spotless for code formatting
 spotless {
