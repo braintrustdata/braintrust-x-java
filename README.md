@@ -1,5 +1,7 @@
 # Braintrust Java SDK
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 An OpenTelemetry-based Braintrust SDK for Java that leverages modern Java features and idiomatic patterns.
 
 ## Features

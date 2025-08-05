@@ -117,6 +117,12 @@ publishing {
                         email = 'support@braintrust.dev'
                     }
                 }
+
+                scm {
+                    connection = 'scm:git:git://github.com/braintrustdata/braintrust-x-java.git'
+                    developerConnection = 'scm:git:ssh://github.com/braintrustdata/braintrust-x-java.git'
+                    url = 'https://github.com/braintrustdata/braintrust-x-java'
+                }
             }
         }
     }
