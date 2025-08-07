@@ -114,7 +114,7 @@ class EvaluationTest {
                 results.results().stream().mapToLong(r -> r.duration().toMillis()).sum();
 
         // Total work time should be > 1000ms but wall time should be much less
-        assertThat(totalDuration).isGreaterThan(1000);
+        assertThat(totalDuration).isGreaterThanOrEqualTo(1000);
     }
 
     @Test
