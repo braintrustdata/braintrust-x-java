@@ -6,6 +6,8 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Configuration for Braintrust SDK. Uses builder pattern with sensible defaults and environment
@@ -23,6 +25,8 @@ public final class BraintrustConfig {
     private final boolean enableTraceConsoleLog;
     private final boolean debug;
     private final Duration requestTimeout;
+    private final SSLContext sslContext;
+    private final X509TrustManager x509TrustManager;
 
     private BraintrustConfig(Builder builder) {
         this.apiKey = builder.apiKey;
@@ -33,6 +37,8 @@ public final class BraintrustConfig {
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
         this.debug = builder.debug;
         this.requestTimeout = builder.requestTimeout;
+        this.sslContext = builder.sslContext;
+        this.x509TrustManager = builder.x509TrustManager;
     }
 
     public String apiKey() {
@@ -67,6 +73,14 @@ public final class BraintrustConfig {
         return requestTimeout;
     }
 
+    public SSLContext sslContext() {
+        return sslContext;
+    }
+
+    public X509TrustManager x509TrustManager() {
+        return x509TrustManager;
+    }
+
     /** Creates a new builder initialized with environment variables. */
     public static Builder builder() {
         return new Builder();
@@ -94,6 +108,8 @@ public final class BraintrustConfig {
         private String orgName;
         private boolean enableTraceConsoleLog;
         private boolean debug;
+        private SSLContext sslContext;
+        private X509TrustManager x509TrustManager;
         private Duration requestTimeout = Duration.ofSeconds(30);
 
         private Builder() {
@@ -152,6 +168,16 @@ public final class BraintrustConfig {
 
         public Builder requestTimeout(Duration timeout) {
             this.requestTimeout = timeout;
+            return this;
+        }
+
+        public Builder sslContext(SSLContext sslContext) {
+            this.sslContext = sslContext;
+            return this;
+        }
+
+        public Builder x509TrustManager(X509TrustManager x509TrustManager) {
+            this.x509TrustManager = x509TrustManager;
             return this;
         }
 
