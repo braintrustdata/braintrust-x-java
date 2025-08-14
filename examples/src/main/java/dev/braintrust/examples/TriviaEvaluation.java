@@ -59,23 +59,6 @@ public class TriviaEvaluation {
         var experiment = Experiment.registerExperimentSync(experimentName, project.id());
         System.out.println("Experiment ID: " + experiment.id());
 
-        // Show experiment URL
-        var appUrl = config.appUrl().toString().replaceAll("/$", "");
-        var orgNameEncoded =
-                java.net.URLEncoder.encode(
-                                config.orgName().orElse("unknown"),
-                                java.nio.charset.StandardCharsets.UTF_8)
-                        .replace("+", "%20");
-        var projectNameEncoded =
-                java.net.URLEncoder.encode(project.name(), java.nio.charset.StandardCharsets.UTF_8)
-                        .replace("+", "%20");
-        var experimentUrl =
-                String.format(
-                        "%s/app/%s/p/%s/experiments/%s",
-                        appUrl, orgNameEncoded, projectNameEncoded, experimentName);
-
-        System.out.println("\nExperiment " + experimentName + " is running at " + experimentUrl);
-
         // Step 3: Set up tracing context
         var braintrustContext = BraintrustContext.forExperiment(experiment.id());
         var context = braintrustContext.storeInContext(Context.current()).makeCurrent();
@@ -181,7 +164,7 @@ public class TriviaEvaluation {
         }
 
         System.out.println("\n=== View in Braintrust ===");
-        System.out.println("See results for " + experimentName + " at " + experimentUrl);
+        System.out.println("See results for " + experimentName + " in the Braintrust web app.");
 
         // Clean up
         context.close();
