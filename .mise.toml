@@ -8,6 +8,7 @@ java = "17"
 _.file = ".env"
 
 [tasks.verify-fmt]
+silent=true
 run = "./gradlew spotlessCheck"
 
 [hooks]
