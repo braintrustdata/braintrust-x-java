@@ -1,0 +1,14 @@
+[settings]
+experimental=true
+
+[tools]
+java = "17"
+
+[env]
+_.file = ".env"
+
+[tasks.verify-fmt]
+run = "./gradlew spotlessCheck"
+
+[hooks]
+postinstall = "mise generate git-pre-commit --write --task=verify-fmt"
