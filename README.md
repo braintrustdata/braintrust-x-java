@@ -41,8 +41,8 @@ cp .env.example .env
 ### Basic Usage
 
 ```java
-import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.trace.BraintrustTracing;
+import config.dev.braintrust.claude.BraintrustConfig;
+import trace.dev.braintrust.claude.BraintrustTracing;
 
 // Initialize with environment variables
 var openTelemetry = BraintrustTracing.quickstart();
@@ -167,7 +167,7 @@ config.defaultProjectId()
 The SDK provides a wrapped OpenAI client that automatically adds Braintrust-specific tracing:
 
 ```java
-import dev.braintrust.openai.BraintrustOpenAI;
+import openai.dev.braintrust.claude.BraintrustOpenAI;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 
 // Create wrapped client

@@ -1,6 +1,6 @@
 package dev.braintrust.scala
 
-import dev.braintrust.config.BraintrustConfig
+import config.dev.braintrust.claude.BraintrustConfig
 import dev.braintrust.trace.{BraintrustTracing => JavaTracing}
 import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.api.trace.{Span, Tracer}
