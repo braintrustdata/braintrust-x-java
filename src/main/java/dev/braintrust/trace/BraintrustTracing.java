@@ -6,6 +6,7 @@ import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
@@ -14,6 +15,7 @@ import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -158,7 +160,13 @@ public final class BraintrustTracing {
                     .addShutdownHook(
                             new Thread(
                                     () -> {
-                                        BraintrustLogger.debug("Shutting down tracer provider");
+                                        BraintrustLogger.debug("Shutting down tracer provider. Force-Flushing all otel data.");
+                                        var result = CompletableResultCode.ofAll(List.of(
+                                                openTelemetry.getSdkLoggerProvider().forceFlush().join(10, TimeUnit.SECONDS),
+                                                openTelemetry.getSdkMeterProvider().forceFlush().join(10, TimeUnit.SECONDS),
+                                                openTelemetry.getSdkTracerProvider().forceFlush().join(10, TimeUnit.SECONDS)
+                                        ));
+                                        BraintrustLogger.debug("tracer shutdown complete. Flush successful? " + result.isSuccess());
                                         tracerProvider.shutdown();
                                     }));
 
