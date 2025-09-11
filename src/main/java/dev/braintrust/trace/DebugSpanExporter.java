@@ -1,6 +1,6 @@
 package dev.braintrust.trace;
 
-import dev.braintrust.claude.log.BraintrustLogger;
+import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;

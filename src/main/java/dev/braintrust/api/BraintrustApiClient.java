@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import dev.braintrust.claude.config.BraintrustConfig;
-import dev.braintrust.claude.log.BraintrustLogger;
+import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.log.BraintrustLogger;
 
 import java.io.IOException;
 import java.net.URI;

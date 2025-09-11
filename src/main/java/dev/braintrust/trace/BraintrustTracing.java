@@ -1,7 +1,7 @@
 package dev.braintrust.trace;
 
-import dev.braintrust.claude.config.BraintrustConfig;
-import dev.braintrust.claude.log.BraintrustLogger;
+import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;

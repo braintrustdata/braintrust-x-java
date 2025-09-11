@@ -14,10 +14,10 @@ repositories {
 
 dependencies {
     implementation project(':')
-    
+
     // Official OpenAI Java SDK
     implementation 'com.openai:openai-java:2.8.1'
-    
+
     // OkHttp for HTTP client (required by OpenAI SDK)
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
@@ -28,7 +28,7 @@ application {
 
 task runOpenTelemetry(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'dev.braintrust.examples.OpenTelemetryExample'
+    mainClass = 'dev.braintrust.claude.examples.OpenTelemetryExample'
 }
 
 task runSimple(type: JavaExec) {
@@ -78,5 +78,5 @@ task runTestEndpoints(type: JavaExec) {
 
 task runTriviaEval(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'dev.braintrust.examples.TriviaEvaluation'
+    mainClass = 'dev.braintrust.claude.examples.TriviaEvaluation'
 }

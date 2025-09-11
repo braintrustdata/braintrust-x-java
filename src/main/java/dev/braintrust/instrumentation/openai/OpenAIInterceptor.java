@@ -2,7 +2,7 @@ package dev.braintrust.instrumentation.openai;
 
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
-import dev.braintrust.claude.log.BraintrustLogger;
+import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.SpanKind;

@@ -162,7 +162,7 @@ public final class BraintrustConfig {
 
             // If orgName is not already set, try to retrieve it from the API
             if (orgName == null || orgName.isBlank()) {
-                throw new IllegalStateException("org name is required. Set BRAINTRUST_API_KEY environment variable or use apiKey() method.");
+                throw new IllegalStateException("org name is required");
             }
 
             return new BraintrustConfig(this);
