@@ -36,7 +36,6 @@ public class BraintrustSpanProcessor implements SpanProcessor {
 
     @Deprecated
     public static final AttributeKey<String> PARENT_TYPE = AttributeKey.stringKey("braintrust.parent.type");
-
     // Usage metrics
     public static final AttributeKey<Long> USAGE_PROMPT_TOKENS = AttributeKey.longKey("braintrust.usage.prompt_tokens");
     public static final AttributeKey<Long> USAGE_COMPLETION_TOKENS = AttributeKey.longKey("braintrust.usage.completion_tokens");
@@ -139,12 +138,14 @@ public class BraintrustSpanProcessor implements SpanProcessor {
     private void logSpanDetails(ReadableSpan span) {
         var spanData = span.toSpanData();
         BraintrustLogger.debug(
-                "Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={}",
+                "Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={}, events={}",
                 spanData.getName(),
                 spanData.getTraceId(),
                 spanData.getSpanId(),
                 (spanData.getEndEpochNanos() - spanData.getStartEpochNanos()) / 1_000_000,
-                spanData.getAttributes());
+                spanData.getAttributes(),
+                spanData.getEvents()
+        );
     }
 
     /** Parent context for spans (project or experiment). */

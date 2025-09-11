@@ -38,7 +38,7 @@ public class OpenAIInstrumentationExample {
             // Use the wrapped client which will handle all tracing
             // var response = openAIClient.chat().completions().create(request, messages);
             var response = openAIClient.chat().completions().create(request);
-            System.out.println(response);
+            System.out.println("~~~ GOT RESPONSE: " + response);
             openAIClient.completions();
             Thread.sleep(30);
         } finally {
