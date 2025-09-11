@@ -48,9 +48,10 @@ dependencies {
     // Utilities
     implementation 'com.google.code.findbugs:jsr305:3.0.2' // @Nullable annotations
     implementation 'org.apache.commons:commons-lang3:3.14.0'
-    
+
     // AI SDKs (optional dependencies)
     compileOnly 'com.openai:openai-java:2.8.1' // Official OpenAI SDK
+    implementation "io.opentelemetry.instrumentation:opentelemetry-openai-java-1.1:2.19.0-alpha"
     // compileOnly 'com.anthropic:anthropic-java:0.1.0' // Not yet available
 
     // Testing
@@ -97,19 +98,19 @@ publishing {
     publications {
         maven(MavenPublication) {
             from components.java
-            
+
             pom {
                 name = 'Braintrust Java SDK'
                 description = 'OpenTelemetry-based Braintrust SDK for Java'
                 url = 'https://github.com/braintrustdata/braintrust-x-java'
-                
+
                 licenses {
                     license {
                         name = 'MIT License'
                         url = 'https://opensource.org/licenses/MIT'
                     }
                 }
-                
+
                 developers {
                     developer {
                         id = 'braintrust'
@@ -127,16 +128,16 @@ publishing {
 spotless {
     java {
         target 'src/*/java/**/*.java', 'examples/src/*/java/**/*.java'
-        
+
         // Use Google Java Format
         googleJavaFormat('1.19.2').aosp().reflowLongStrings()
-        
+
         // Remove unused imports
         removeUnusedImports()
-        
+
         // Trim trailing whitespace
         trimTrailingWhitespace()
-        
+
         // End with newline
         endWithNewline()
     }

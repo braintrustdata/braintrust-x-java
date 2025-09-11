@@ -30,3 +30,8 @@ task runOpenTelemetryTracing(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'dev.braintrust.examples.OpenTelemetryTracingExample'
 }
+
+task runOpenAIInstrumentation(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.OpenAIInstrumentationExample'
+}

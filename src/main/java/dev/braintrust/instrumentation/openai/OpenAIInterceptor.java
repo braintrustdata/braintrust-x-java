@@ -1,13 +1,18 @@
 package dev.braintrust.instrumentation.openai;
 
 import com.openai.client.OpenAIClient;
+import com.openai.client.OpenAIClientAsync;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Scope;
+
+import io.opentelemetry.instrumentation.openai.v1_1.OpenAITelemetry;
+import io.opentelemetry.instrumentation.openai.v1_1.OpenAITelemetryBuilder;
 
 import java.util.function.Supplier;
 
@@ -16,10 +21,10 @@ import java.util.function.Supplier;
  */
 public class OpenAIInterceptor {
 
-    public static OpenAIClient wrapOpenAI(Supplier<OpenAIClient> clientCreator) {
-        // TODO: we'll have to write our own custom HTTP client. The is the recommendation from the OAI SDK
-        // https://github.com/openai/openai-java?tab=readme-ov-file#custom-http-client
-        throw new RuntimeException("TODO");
+    public static OpenAIClient wrapOpenAI(OpenTelemetry openTelemetry, OpenAIClient openAIClient) {
+        var oaiTel = OpenAITelemetry.builder(openTelemetry)
+                .build();
+        return  oaiTel.wrap(openAIClient);
     }
 
     /**
