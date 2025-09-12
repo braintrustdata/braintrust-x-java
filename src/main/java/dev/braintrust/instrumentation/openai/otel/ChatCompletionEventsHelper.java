@@ -6,8 +6,9 @@
 package dev.braintrust.instrumentation.openai.otel;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
-import static dev.braintrust.instrumentation.openai.otel.GenAiAttributes.GEN_AI_PROVIDER_NAME;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionAssistantMessageParam;
 import com.openai.models.chat.completions.ChatCompletionContentPartText;
@@ -19,10 +20,12 @@ import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
 import com.openai.models.chat.completions.ChatCompletionToolMessageParam;
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
+import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Value;
 import io.opentelemetry.api.logs.LogRecordBuilder;
 import io.opentelemetry.api.logs.Logger;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -38,6 +41,7 @@ import javax.annotation.Nullable;
 final class ChatCompletionEventsHelper {
 
   private static final AttributeKey<String> EVENT_NAME = stringKey("event.name");
+  private static final ObjectMapper JSON_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
 
   public static void emitPromptLogEvents(
       Context context,
@@ -50,18 +54,27 @@ final class ChatCompletionEventsHelper {
       if (msg.isSystem()) {
         eventType = "gen_ai.system.message";
         if (captureMessageContent) {
-          body.put("content", Value.of(contentToString(msg.asSystem().content())));
+            var content = contentToString(msg.asSystem().content());
+            Span.current().setAttribute("instructions", content);
+          body.put("content", Value.of(content));
         }
       } else if (msg.isDeveloper()) {
         eventType = "gen_ai.system.message";
         body.put("role", Value.of("developer"));
         if (captureMessageContent) {
-          body.put("content", Value.of(contentToString(msg.asDeveloper().content())));
+            var content = contentToString(msg.asDeveloper().content());
+          body.put("content", Value.of(content));
         }
       } else if (msg.isUser()) {
         eventType = "gen_ai.user.message";
         if (captureMessageContent) {
-          body.put("content", Value.of(contentToString(msg.asUser().content())));
+            var content = contentToString(msg.asUser().content());
+            try {
+                Span.current().setAttribute("braintrust.input", JSON_MAPPER.writeValueAsString(content));
+            } catch (JsonProcessingException e) {
+                BraintrustLogger.error("Error mapping json", e);
+            }
+          body.put("content", Value.of(content));
         }
       } else if (msg.isAssistant()) {
         ChatCompletionAssistantMessageParam assistantMsg = msg.asAssistant();
@@ -91,8 +104,9 @@ final class ChatCompletionEventsHelper {
       } else {
         continue;
       }
-      newEvent(eventLogger, eventType).setContext(context).setBody(Value.of(body)).emit();
+      // newEvent(eventLogger, eventType).setContext(context).setBody(Value.of(body)).emit();
     }
+      // "gen_ai.input.messages"
   }
 
   private static String contentToString(ChatCompletionToolMessageParam.Content content) {
@@ -171,11 +185,19 @@ final class ChatCompletionEventsHelper {
       Logger eventLogger,
       ChatCompletion completion,
       boolean captureMessageContent) {
+      try {
+          var completionJson = JSON_MAPPER.writeValueAsString(completion);
+          Span.current().setAttribute("braintrust.output", completionJson);
+      } catch (JsonProcessingException e) {
+          BraintrustLogger.error("Error mapping completion json", e);
+      }
     for (ChatCompletion.Choice choice : completion.choices()) {
       ChatCompletionMessage choiceMsg = choice.message();
       Map<String, Value<?>> message = new HashMap<>();
       if (captureMessageContent) {
-        choiceMsg.content().ifPresent(content -> message.put("content", Value.of(content)));
+        choiceMsg.content().ifPresent(content -> {
+            message.put("content", Value.of(content));
+        });
       }
       choiceMsg
           .toolCalls()
@@ -207,14 +229,19 @@ final class ChatCompletionEventsHelper {
     body.put("finish_reason", Value.of(finishReason));
     body.put("index", Value.of(index));
     body.put("message", eventMessageObject);
-    newEvent(eventLogger, "gen_ai.choice").setContext(context).setBody(Value.of(body)).emit();
+    // newEvent(eventLogger, "gen_ai.choice").setContext(context).setBody(Value.of(body)).emit();
   }
 
   private static LogRecordBuilder newEvent(Logger eventLogger, String name) {
-    return eventLogger
-        .logRecordBuilder()
-        .setAttribute(EVENT_NAME, name)
-        .setAttribute(GEN_AI_PROVIDER_NAME, "openai");
+      // NOTE: disabling logger events in braintrust instrumentation. We don't use these events.
+      // Will have to properly hanlde this if we want to merge braintrust attributes upstream into otel instrumentation
+      /*
+      return eventLogger
+              .logRecordBuilder()
+              .setAttribute(EVENT_NAME, name)
+              .setAttribute(GEN_AI_PROVIDER_NAME, "openai");
+       */
+      throw new RuntimeException("Should not invoke");
   }
 
   private static Value<?> buildToolCallEventObject(

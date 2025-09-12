@@ -6,9 +6,6 @@ import io.opentelemetry.api.OpenTelemetry;
 
 public class BraintrustOpenAI {
     public static OpenAIClient wrapOpenAI(OpenTelemetry openTelemetry, OpenAIClient openAIClient) {
-        var oaiTel = OpenAITelemetry.builder(openTelemetry)
-                .setCaptureMessageContent(true)
-                .build();
-        return  oaiTel.wrap(openAIClient);
+        return OpenAITelemetry.builder(openTelemetry).setCaptureMessageContent(true).build().wrap(openAIClient);
     }
 }
