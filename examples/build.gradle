@@ -41,3 +41,15 @@ task runOpenAIInstrumentation(type: JavaExec) {
     suspend = false
   }
 }
+
+
+task runExperiment(type: JavaExec) {
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'dev.braintrust.examples.ExperimentExample'
+  debugOptions {
+    enabled = true
+    port = 5566
+    server = true
+    suspend = false
+  }
+}

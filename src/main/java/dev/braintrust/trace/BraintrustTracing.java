@@ -55,11 +55,12 @@ public final class BraintrustTracing {
 
     /** Gets a tracer with Braintrust instrumentation scope. */
     public static Tracer getTracer() {
-        return GlobalOpenTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
+        return getTracer(GlobalOpenTelemetry.get());
     }
 
     /** Gets a tracer from a specific OpenTelemetry instance. */
     public static Tracer getTracer(OpenTelemetry openTelemetry) {
+        // TODO: will otel return some dummy object if we don't have a braintrust tracer? Are we call with that?
         return openTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
     }
 

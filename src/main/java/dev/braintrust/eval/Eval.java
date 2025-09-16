@@ -1,18 +1,16 @@
 package dev.braintrust.eval;
 
+import dev.braintrust.api.BraintrustApiClient;
 import dev.braintrust.claude.api.Experiment;
-import dev.braintrust.claude.eval.*;
-import dev.braintrust.claude.trace.BraintrustTracing;
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.Tracer;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 /**
  * Main evaluation framework for testing AI models. Uses Java generics for type safety and streams
@@ -22,19 +20,30 @@ import java.util.stream.Stream;
  * @param <EXPECTED> The type of output produced by the task
  */
 public final class Eval<INPUT, EXPECTED, RESULT> {
-    private final String name;
-    private final Tracer tracer;
-    private final List<Case> cases;
+    private final @Nonnull String experimentName;
+    private final @Nonnull String projectName;
+    private final @Nonnull BraintrustConfig config;
+    private final @Nonnull BraintrustApiClient client;
+    private final @Nonnull Tracer tracer;
+    private final @Nonnull List<EvalCase> cases;
 
     private Eval(Builder<INPUT, EXPECTED, RESULT> builder) {
-        this.name = builder.name;
-        this.tracer = builder.tracer;
+        this.experimentName = builder.experimentName;
+        this.projectName = Objects.requireNonNull(builder.projectName);
+        this.config = Objects.requireNonNull(builder.config);
+        this.client = new BraintrustApiClient(config);
+        this.tracer = Objects.requireNonNull(builder.tracer);
         this.cases = List.of();
-        throw new RuntimeException("FIXME");
     }
 
     /** Runs the evaluation and returns results. */
-    public EvalResult run() {
+    public EvalResult<INPUT, EXPECTED, RESULT> run() {
+        var experiment = client.createExperiment(new BraintrustApiClient.CreateExperimentRequest(projectName, experimentName, Optional.of("TODO EXP DESC GOES HERE?"), Optional.empty()));
+        var experimentID = experiment.id();
+        throw new RuntimeException("TODO: " + experimentID);
+    }
+
+    private EvalCaseResult<INPUT, EXPECTED, RESULT> evalOne(String experimentId, EvalCase<INPUT, EXPECTED> evalCase) {
         throw new RuntimeException("TODO");
     }
 
@@ -43,7 +52,7 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
      */
     public static class EvalResult<INPUT, EXPECTED, RESULT> {
         // List: Case->res
-        private final List<CaseResult<INPUT, EXPECTED, RESULT>> results = null;
+        private final List<EvalCaseResult<INPUT, EXPECTED, RESULT>> results = null;
 
         public String createReportString() {
             // some status about the eval scorers
@@ -52,14 +61,14 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
         }
     }
 
-    public record CaseResult<INPUT, EXPECTED, RESULT>(Case<INPUT, EXPECTED> evalCase, RESULT result) {}
+    public record EvalCaseResult<INPUT, EXPECTED, RESULT>(EvalCase<INPUT, EXPECTED> evalCase, RESULT result) {}
 
-    public record Case<INPUT, EXPECTED>(INPUT input, EXPECTED expected) {
-        public static <INPUT, EXPECTED> Case<INPUT, EXPECTED> of(INPUT input, EXPECTED expected) {
-            throw new RuntimeException("TODO");
+    public record EvalCase<INPUT, EXPECTED>(INPUT input, EXPECTED expected, @Nonnull List<String> tags, @Nonnull Metadata metadata) {
+        public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected) {
+            return of(input, expected, List.of(), new Metadata());
         }
-        public static <INPUT, EXPECTED> Case<INPUT, EXPECTED> of(INPUT input, EXPECTED expected, List<String> tags, Metadata Metadata) {
-            throw new RuntimeException("TODO");
+        public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected, List<String> tags, Metadata metadata) {
+            return new EvalCase<>(input, expected, tags, metadata);
         }
     }
 
@@ -68,15 +77,15 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
     }
 
     public interface Task<INPUT, EXPECTED, RESULT> {
-        RESULT run(Case<INPUT, EXPECTED> evalCase);
+        RESULT run(EvalCase<INPUT, EXPECTED> evalCase);
     }
 
     public interface Scorer<INPUT, EXPECTED, RESULT> {
         String getName();
 
-        double score(Case<INPUT, EXPECTED> evalCase, RESULT result);
+        double score(EvalCase<INPUT, EXPECTED> evalCase, RESULT result);
 
-        static <INPUT, EXPECTED, RESULT> Scorer<INPUT, EXPECTED, RESULT> of(String scorerName, BiFunction<Case<INPUT, EXPECTED>, RESULT, Double> scorerFn) {
+        static <INPUT, EXPECTED, RESULT> Scorer<INPUT, EXPECTED, RESULT> of(String scorerName, BiFunction<EvalCase<INPUT, EXPECTED>, RESULT, Double> scorerFn) {
             return new Scorer<>() {
                 @Override
                 public String getName() {
@@ -84,14 +93,14 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
                 }
 
                 @Override
-                public double score(Case<INPUT, EXPECTED> evalCase, RESULT result) {
+                public double score(EvalCase<INPUT, EXPECTED> evalCase, RESULT result) {
                     return scorerFn.apply(evalCase, result);
                 }
             };
         }
 
         static <INPUT, EXPECTED, RESULT> Scorer<INPUT, EXPECTED, RESULT> of(String scorerName, Function<RESULT, Double> scorerFn) {
-            throw new RuntimeException("TODO");
+            return of(scorerName, (evalCase, result) -> scorerFn.apply(result));
         }
     }
 
@@ -102,44 +111,71 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
 
     /** Builder for creating evaluations with fluent API. */
     public static final class Builder<INPUT, EXPECTED, RESULT> {
-        private String name = "unnamed-java-eval";
+        private @Nonnull String experimentName = "unnamed-java-eval";
+        private @Nullable BraintrustConfig config;
+        private @Nullable String projectName;
         private @Nullable Tracer tracer = null;
-        private List<Case<INPUT, EXPECTED>> evalCases;
-        private Task<INPUT, EXPECTED, RESULT> task;
-        private List<Scorer<INPUT, EXPECTED, RESULT>> scorers;
+        private @Nonnull List<EvalCase<INPUT, EXPECTED>> evalCases = List.of();
+        private @Nullable Task<INPUT, EXPECTED, RESULT> task;
+        private @Nonnull List<Scorer<INPUT, EXPECTED, RESULT>> scorers = List.of();
+
+        public Eval<INPUT, EXPECTED, RESULT> build() {
+            if (config == null) {
+                config = BraintrustConfig.fromEnvironment();
+            }
+            if (tracer == null) {
+                tracer = BraintrustTracing.getTracer();
+            }
+            if (projectName == null) {
+                projectName = config.defaultProjectId().orElse(BraintrustConfig.FALLBACK_PROJECT_NAME);
+            }
+            if (evalCases.isEmpty()) {
+                throw new RuntimeException("must provide at least one eval case");
+            }
+            if (scorers.isEmpty()) {
+                throw new RuntimeException("must provide at least one scorer");
+            }
+            return new Eval<>(this);
+        }
 
         public Builder<INPUT, EXPECTED, RESULT> name(String name) {
-            this.name = name;
+            this.experimentName = name;
+            return this;
+        }
+
+        public Builder<INPUT, EXPECTED, RESULT> projectName(@Nonnull String projectName) {
+            this.projectName = Objects.requireNonNull(projectName);
             return this;
         }
 
         public Builder<INPUT, EXPECTED, RESULT> config(BraintrustConfig config) {
-            throw new RuntimeException("TODO");
+            this.config = config;
+            return this;
         }
 
         public Builder<INPUT, EXPECTED, RESULT> tracer(Tracer tracer) {
             this.tracer = tracer;
+            return this;
         }
 
         @SafeVarargs
-        public final Builder<INPUT, EXPECTED, RESULT> cases(Case<INPUT, EXPECTED>... cases) {
-            throw new RuntimeException("TODO");
+        public final Builder<INPUT, EXPECTED, RESULT> cases(EvalCase<INPUT, EXPECTED>... cases) {
+            this.evalCases = List.of(cases);
+            return this;
         }
 
         public Builder<INPUT, EXPECTED, RESULT> task(Task<INPUT, EXPECTED, RESULT> task) {
-            throw new RuntimeException("TODO");
+            this.task = task;
+            return this;
         }
 
         public Builder<INPUT, EXPECTED, RESULT> scorers(List<Scorer<INPUT, EXPECTED, RESULT>> scorers) {
-            throw new RuntimeException("TODO");
+            this.scorers = scorers;
+            return this;
         }
 
         public Builder<INPUT, EXPECTED, RESULT> scorer(Scorer<INPUT, EXPECTED, RESULT> scorer) {
             return scorers(List.of(scorer));
-        }
-
-        public Eval<INPUT, EXPECTED, RESULT> build() {
-            throw new RuntimeException("TODO");
         }
     }
 }

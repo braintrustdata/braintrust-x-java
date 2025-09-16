@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 
 public class BraintrustApiClient {
     private final BraintrustConfig config;
@@ -61,8 +62,12 @@ public class BraintrustApiClient {
     }
 
     /** Creates an experiment. */
-    public CompletableFuture<Experiment> createExperiment(CreateExperimentRequest request) {
-        return postAsync("/v1/experiment", request, Experiment.class);
+    public Experiment createExperiment(CreateExperimentRequest request) {
+        try {
+            return postAsync("/v1/experiment", request, Experiment.class).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new ApiException(e);
+        }
     }
 
     /** Gets an experiment by ID. */

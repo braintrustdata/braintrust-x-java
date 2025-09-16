@@ -11,6 +11,7 @@ import javax.annotation.Nullable;
  * variable support.
  */
 public final class BraintrustConfig {
+    public static final String FALLBACK_PROJECT_NAME = "default-java-project";
     private static final String DEFAULT_API_URL = "https://api.braintrust.dev";
     private static final String DEFAULT_APP_URL = "https://www.braintrust.dev";
 
