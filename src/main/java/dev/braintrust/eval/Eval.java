@@ -5,13 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.braintrust.api.BraintrustApiClient;
 import dev.braintrust.claude.trace.BraintrustSpanProcessor;
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.trace.BraintrustContext;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -51,7 +54,7 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
         var evalCaseResults = evalCases.stream()
                 .map(evalCase -> evalOne(experimentID, evalCase))
                 .toList();
-        return new EvalResult<>();
+        return new EvalResult<>(this);
     }
 
     private EvalCaseResult<INPUT, EXPECTED, RESULT> evalOne(String experimentId, EvalCase<INPUT, EXPECTED> evalCase) {
@@ -68,31 +71,38 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
                         .setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, experimentId)
                         .setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment")
                         .startSpan();
-        try (var rootScope = rootSpan.makeCurrent()) {
+        try (var rootScope = BraintrustContext.forExperiment(experimentId, rootSpan).makeCurrent()) {
             final RESULT result;
             { // run task
                 var taskSpan = tracer.spanBuilder("task")
                         .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
                         .setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}")
                         .startSpan();
-                try (var unused = taskSpan.makeCurrent()){
+                try (var unused = BraintrustContext.forExperiment(experimentId, taskSpan).makeCurrent()){
                     result = task.apply(evalCase);
                 } finally {
                     taskSpan.end();
                 }
-                rootSpan.setAttribute("braintrust.output_json", "{ \"output\":\"" + result + "\"}");
+                try {
+                    rootSpan.setAttribute("braintrust.output_json", JSON_MAPPER.writeValueAsString(Map.of("output", String.valueOf(result))));
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException(e);
+                }
             }
             { // run scorers
                 var scoreSpan = tracer.spanBuilder("score")
                         .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
                         .setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}")
                         .startSpan();
-                try (var unused = scoreSpan.makeCurrent()){
+                try (var unused = BraintrustContext.forExperiment(experimentId, scoreSpan).makeCurrent()){
                     // NOTE: linked hash map to preserve ordering. Not in the spec but nice user experience
                     final HashMap<String, Double> nameToScore = new LinkedHashMap<>();
                     var scores = scorers.stream()
                             .map(scorer -> {
                                 var score = scorer.score(evalCase, result);
+                                if (score < 0.0 || score > 1.0) {
+                                    throw new RuntimeException("score must be between 0 and 1: " + scorer.getName() + " : " + score);
+                                }
                                 nameToScore.put(scorer.getName(), score);
                                 return score;
                             })
@@ -116,12 +126,21 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
      * Results of all eval cases of an experiment.
      */
     public static class EvalResult<INPUT, EXPECTED, RESULT> {
-        private EvalResult() {}
+        private final Eval<INPUT, EXPECTED, RESULT> eval;
+
+        private EvalResult(Eval<INPUT,EXPECTED,RESULT> eval) {
+            this.eval = eval;
+        }
 
         public String createReportString() {
-            // some status about the eval scorers
-            // a link to the experiment on the UI
-            throw new RuntimeException("~~~~~ TODO: put a link here to view the experiment");
+            try {
+                var project = eval.client.getProject(eval.projectName).get().orElseThrow();
+                // FIXME: don't hardcore the first part of the url. Need to check for staging and also get the actual org
+                var experimentUrl = "https://www.braintrust.dev/app/braintrustdata.com/p/" + project.name() + "/experiments/" + eval.experimentName;
+                return "Experiment complete. View results in braintrust: " + experimentUrl;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -232,6 +251,10 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
         public Builder<INPUT, EXPECTED, RESULT> task(Task<INPUT, EXPECTED, RESULT> task) {
             this.task = task;
             return this;
+        }
+
+        public Builder<INPUT, EXPECTED, RESULT> task(Function<INPUT, RESULT> taskFn) {
+            return task((Task<INPUT, EXPECTED, RESULT>) evalCase -> taskFn.apply(evalCase.input()));
         }
 
         @SafeVarargs

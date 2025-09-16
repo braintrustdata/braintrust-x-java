@@ -1,5 +1,6 @@
 package dev.braintrust.trace;
 
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextKey;
 
@@ -34,6 +35,12 @@ public final class BraintrustContext {
     /** Creates a context for an experiment parent. */
     public static BraintrustContext forExperiment(String experimentId) {
         return new BraintrustContext(null, experimentId, "experiment");
+    }
+
+    /** Creates a context for an experiment parent. */
+    public static Context forExperiment(String experimentId, Span span) {
+        return Context.current().with(span)
+                .with(KEY, new BraintrustContext(null, experimentId, "experiment"));
     }
 
     /** Stores this context in the given Context. */
