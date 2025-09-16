@@ -16,7 +16,8 @@ public class ExperimentExample {
                 .cases(Eval.EvalCase.of("foo", "foo-type"),
                         Eval.EvalCase.of("bar", "bar-type"))
                 .task(inputStr -> inputStr + "-type")
-                .scorer(Eval.Scorer.of("always_happy", result -> 1.0))
+                .scorers(Eval.Scorer.of("fruit_scorer", result -> 1.0),
+                        Eval.Scorer.of("vegtable_scorer", result -> 0.0))
                 .build();
         var result = eval.run();
         System.out.println(result.createReportString());

@@ -1,9 +1,12 @@
 package dev.braintrust.eval;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.braintrust.api.BraintrustApiClient;
-import dev.braintrust.claude.api.Experiment;
+import dev.braintrust.claude.trace.BraintrustSpanProcessor;
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.trace.BraintrustTracing;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 
 import javax.annotation.Nonnull;
@@ -20,12 +23,15 @@ import java.util.function.Function;
  * @param <EXPECTED> The type of output produced by the task
  */
 public final class Eval<INPUT, EXPECTED, RESULT> {
+    private static final ObjectMapper JSON_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
     private final @Nonnull String experimentName;
     private final @Nonnull String projectName;
     private final @Nonnull BraintrustConfig config;
     private final @Nonnull BraintrustApiClient client;
     private final @Nonnull Tracer tracer;
-    private final @Nonnull List<EvalCase> cases;
+    private final @Nonnull List<EvalCase<INPUT, EXPECTED>> evalCases;
+    private final @Nonnull Task<INPUT, EXPECTED, RESULT> task;
+    private final @Nonnull List<Scorer<INPUT, EXPECTED, RESULT>> scorers;
 
     private Eval(Builder<INPUT, EXPECTED, RESULT> builder) {
         this.experimentName = builder.experimentName;
@@ -33,31 +39,89 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
         this.config = Objects.requireNonNull(builder.config);
         this.client = new BraintrustApiClient(config);
         this.tracer = Objects.requireNonNull(builder.tracer);
-        this.cases = List.of();
+        this.evalCases = List.copyOf(builder.evalCases);
+        this.task = Objects.requireNonNull(builder.task);
+        this.scorers = List.copyOf(builder.scorers);
     }
 
     /** Runs the evaluation and returns results. */
     public EvalResult<INPUT, EXPECTED, RESULT> run() {
-        var experiment = client.createExperiment(new BraintrustApiClient.CreateExperimentRequest(projectName, experimentName, Optional.of("TODO EXP DESC GOES HERE?"), Optional.empty()));
+        var experiment = client.createExperiment(new BraintrustApiClient.CreateExperimentRequest(projectName, experimentName, Optional.empty(), Optional.empty()));
         var experimentID = experiment.id();
-        throw new RuntimeException("TODO: " + experimentID);
+        var evalCaseResults = evalCases.stream()
+                .map(evalCase -> evalOne(experimentID, evalCase))
+                .toList();
+        return new EvalResult<>();
     }
 
     private EvalCaseResult<INPUT, EXPECTED, RESULT> evalOne(String experimentId, EvalCase<INPUT, EXPECTED> evalCase) {
-        throw new RuntimeException("TODO");
+        var rootSpan =
+                tracer.spanBuilder("eval") // TODO: allow names for eval cases
+                        .setNoParent() // each eval case is its own trace
+                        .setSpanKind(SpanKind.CLIENT)
+                        .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
+                        .setAttribute("braintrust.span_attributes", "{\"type\":\"eval\"}")
+                        // FIXME: use proper object mapper for json stuff
+                        .setAttribute("braintrust.input_json", "{ \"input\":\"" + evalCase.input() + "\"}")
+                        .setAttribute("braintrust.expected", "\"" + evalCase.expected() + "\"")
+                        // TODO: these attributes are deprecated apparently? Do we need to set them?
+                        .setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, experimentId)
+                        .setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment")
+                        .startSpan();
+        try (var rootScope = rootSpan.makeCurrent()) {
+            final RESULT result;
+            { // run task
+                var taskSpan = tracer.spanBuilder("task")
+                        .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
+                        .setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}")
+                        .startSpan();
+                try (var unused = taskSpan.makeCurrent()){
+                    result = task.apply(evalCase);
+                } finally {
+                    taskSpan.end();
+                }
+                rootSpan.setAttribute("braintrust.output_json", "{ \"output\":\"" + result + "\"}");
+            }
+            { // run scorers
+                var scoreSpan = tracer.spanBuilder("score")
+                        .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
+                        .setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}")
+                        .startSpan();
+                try (var unused = scoreSpan.makeCurrent()){
+                    // NOTE: linked hash map to preserve ordering. Not in the spec but nice user experience
+                    final HashMap<String, Double> nameToScore = new LinkedHashMap<>();
+                    var scores = scorers.stream()
+                            .map(scorer -> {
+                                var score = scorer.score(evalCase, result);
+                                nameToScore.put(scorer.getName(), score);
+                                return score;
+                            })
+                            .toList();
+                    try {
+                        scoreSpan.setAttribute("braintrust.scores", JSON_MAPPER.writeValueAsString(nameToScore));
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
+                } finally {
+                    scoreSpan.end();
+                }
+            }
+            return new EvalCaseResult<>(evalCase, result);
+        } finally {
+            rootSpan.end();
+        }
     }
 
     /**
      * Results of all eval cases of an experiment.
      */
     public static class EvalResult<INPUT, EXPECTED, RESULT> {
-        // List: Case->res
-        private final List<EvalCaseResult<INPUT, EXPECTED, RESULT>> results = null;
+        private EvalResult() {}
 
         public String createReportString() {
             // some status about the eval scorers
             // a link to the experiment on the UI
-            throw new RuntimeException("TODO");
+            throw new RuntimeException("~~~~~ TODO: put a link here to view the experiment");
         }
     }
 
@@ -67,7 +131,7 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
         public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected) {
             return of(input, expected, List.of(), new Metadata());
         }
-        public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected, List<String> tags, Metadata metadata) {
+        public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected, @Nonnull List<String> tags, @Nonnull Metadata metadata) {
             return new EvalCase<>(input, expected, tags, metadata);
         }
     }
@@ -77,7 +141,7 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
     }
 
     public interface Task<INPUT, EXPECTED, RESULT> {
-        RESULT run(EvalCase<INPUT, EXPECTED> evalCase);
+        RESULT apply(EvalCase<INPUT, EXPECTED> evalCase);
     }
 
     public interface Scorer<INPUT, EXPECTED, RESULT> {
@@ -135,6 +199,7 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
             if (scorers.isEmpty()) {
                 throw new RuntimeException("must provide at least one scorer");
             }
+            Objects.requireNonNull(task);
             return new Eval<>(this);
         }
 
@@ -169,13 +234,10 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
             return this;
         }
 
-        public Builder<INPUT, EXPECTED, RESULT> scorers(List<Scorer<INPUT, EXPECTED, RESULT>> scorers) {
-            this.scorers = scorers;
+        @SafeVarargs
+        public final Builder<INPUT, EXPECTED, RESULT> scorers(Scorer<INPUT, EXPECTED, RESULT>... scorers) {
+            this.scorers = List.of(scorers);
             return this;
-        }
-
-        public Builder<INPUT, EXPECTED, RESULT> scorer(Scorer<INPUT, EXPECTED, RESULT> scorer) {
-            return scorers(List.of(scorer));
         }
     }
 }
