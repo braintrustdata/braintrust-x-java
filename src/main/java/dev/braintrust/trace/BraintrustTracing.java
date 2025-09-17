@@ -150,9 +150,7 @@ public final class BraintrustTracing {
                             .addSpanProcessor(spanProcessor)
                             .build();
 
-            var logExporter = OtlpHttpLogRecordExporter.builder()
-                    .setEndpoint(config.apiUrl() + config.logsPath())
-                    .build();
+            var logExporter = new BraintrustLogExporter(config);
             var loggerProvider = SdkLoggerProvider.builder()
                     .addLogRecordProcessor(BatchLogRecordProcessor.builder(logExporter).build())
                     .build();
