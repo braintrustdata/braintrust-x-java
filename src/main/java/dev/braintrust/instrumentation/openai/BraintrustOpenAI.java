@@ -6,6 +6,16 @@ import io.opentelemetry.api.OpenTelemetry;
 
 public class BraintrustOpenAI {
     public static OpenAIClient wrapOpenAI(OpenTelemetry openTelemetry, OpenAIClient openAIClient) {
-        return OpenAITelemetry.builder(openTelemetry).setCaptureMessageContent(true).build().wrap(openAIClient);
+        if ("true".equalsIgnoreCase(System.getenv("BRAINTRUST_X_OTEL_LOGS"))) {
+            return io.opentelemetry.instrumentation.openai.v1_1.OpenAITelemetry.builder(openTelemetry)
+                    .setCaptureMessageContent(true)
+                    .build()
+                    .wrap(openAIClient);
+        } else {
+            return OpenAITelemetry.builder(openTelemetry)
+                    .setCaptureMessageContent(true)
+                    .build()
+                    .wrap(openAIClient);
+        }
     }
 }

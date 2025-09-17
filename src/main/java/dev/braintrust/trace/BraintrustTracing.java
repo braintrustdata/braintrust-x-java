@@ -5,8 +5,12 @@ import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
+import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.common.CompletableResultCode;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
@@ -146,9 +150,18 @@ public final class BraintrustTracing {
                             .addSpanProcessor(spanProcessor)
                             .build();
 
+            var logExporter = OtlpHttpLogRecordExporter.builder()
+                    .setEndpoint(config.apiUrl() + config.logsPath())
+                    .build();
+            var loggerProvider = SdkLoggerProvider.builder()
+                    .addLogRecordProcessor(BatchLogRecordProcessor.builder(logExporter).build())
+                    .build();
+
             // Create OpenTelemetry instance
-            var openTelemetry =
-                    OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
+            var openTelemetry = OpenTelemetrySdk.builder()
+                    .setTracerProvider(tracerProvider)
+                    .setLoggerProvider(loggerProvider)
+                    .build();
 
             // Register globally if requested
             if (registerGlobal) {
