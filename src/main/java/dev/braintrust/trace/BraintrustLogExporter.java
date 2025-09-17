@@ -2,10 +2,10 @@ package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.log.BraintrustLogger;
-import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
+import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.sdk.common.CompletableResultCode;
-import io.opentelemetry.sdk.trace.data.SpanData;
-import io.opentelemetry.sdk.trace.export.SpanExporter;
+import io.opentelemetry.sdk.logs.data.LogRecordData;
+import io.opentelemetry.sdk.logs.export.LogRecordExporter;
 
 import java.util.Collection;
 import java.util.List;
@@ -14,32 +14,32 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * Custom span exporter for Braintrust that adds the x-bt-parent header dynamically based on span
+ * Custom log exporter for Braintrust that adds the x-bt-parent header dynamically based on log
  * attributes.
  */
-public class BraintrustSpanExporter implements SpanExporter {
+public class BraintrustLogExporter implements LogRecordExporter {
 
     private final BraintrustConfig config;
-    private final String tracesEndpoint;
-    private final Map<String, OtlpHttpSpanExporter> exporterCache = new ConcurrentHashMap<>();
+    private final String logsEndpoint;
+    private final Map<String, OtlpHttpLogRecordExporter> exporterCache = new ConcurrentHashMap<>();
 
-    public BraintrustSpanExporter(BraintrustConfig config) {
+    public BraintrustLogExporter(BraintrustConfig config) {
         this.config = config;
-        this.tracesEndpoint = config.apiUrl() + config.tracesPath();
+        this.logsEndpoint = config.apiUrl() + config.logsPath();
     }
 
     @Override
-    public CompletableResultCode export(Collection<SpanData> spans) {
-        if (spans.isEmpty()) {
+    public CompletableResultCode export(Collection<LogRecordData> logs) {
+        if (logs.isEmpty()) {
             return CompletableResultCode.ofSuccess();
         }
 
-        // Group spans by their parent (project or experiment)
-        var spansByParent = spans.stream().collect(Collectors.groupingBy(this::getParentFromSpan));
+        // Group logs by their parent (project or experiment)
+        var logsByParent = logs.stream().collect(Collectors.groupingBy(this::getParentFromLog));
 
         // Export each group with the appropriate x-bt-parent header
         var results =
-                spansByParent.entrySet().stream()
+                logsByParent.entrySet().stream()
                         .map(entry -> exportWithParent(entry.getKey(), entry.getValue()))
                         .toList();
 
@@ -49,20 +49,20 @@ public class BraintrustSpanExporter implements SpanExporter {
         return combined;
     }
 
-    private String getParentFromSpan(SpanData span) {
+    private String getParentFromLog(LogRecordData log) {
         // Check for the braintrust.parent attribute
-        var parent = span.getAttributes().get(BraintrustSpanProcessor.PARENT);
+        var parent = log.getAttributes().get(BraintrustSpanProcessor.PARENT);
         if (parent != null) {
             return parent;
         }
 
         // Check legacy attributes for backward compatibility
-        var experimentId = span.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID);
+        var experimentId = log.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID);
         if (experimentId != null) {
             return "experiment_id:" + experimentId;
         }
 
-        var projectId = span.getAttributes().get(BraintrustSpanProcessor.PARENT_PROJECT_ID);
+        var projectId = log.getAttributes().get(BraintrustSpanProcessor.PARENT_PROJECT_ID);
         if (projectId != null) {
             return "project_id:" + projectId;
         }
@@ -71,7 +71,7 @@ public class BraintrustSpanExporter implements SpanExporter {
         return config.defaultProjectId().map(id -> "project_id:" + id).orElse("");
     }
 
-    private CompletableResultCode exportWithParent(String parent, List<SpanData> spans) {
+    private CompletableResultCode exportWithParent(String parent, List<LogRecordData> logs) {
         try {
             // Get or create exporter for this parent
             var exporter =
@@ -80,8 +80,8 @@ public class BraintrustSpanExporter implements SpanExporter {
                             parent,
                             p -> {
                                 var exporterBuilder =
-                                        OtlpHttpSpanExporter.builder()
-                                                .setEndpoint(tracesEndpoint)
+                                        OtlpHttpLogRecordExporter.builder()
+                                                .setEndpoint(logsEndpoint)
                                                 .addHeader(
                                                         "Authorization",
                                                         "Bearer " + config.apiKey())
@@ -91,17 +91,17 @@ public class BraintrustSpanExporter implements SpanExporter {
                                 if (!p.isEmpty()) {
                                     exporterBuilder.addHeader("x-bt-parent", p);
                                     BraintrustLogger.debug(
-                                            "Created exporter with x-bt-parent: {}", p);
+                                            "Created log exporter with x-bt-parent: {}", p);
                                 }
 
                                 return exporterBuilder.build();
                             });
 
-            BraintrustLogger.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
-            // Export the spans
-            return exporter.export(spans);
+            BraintrustLogger.debug("Exporting {} logs with x-bt-parent: {}", logs.size(), parent);
+            // Export the logs
+            return exporter.export(logs);
         } catch (Exception e) {
-            BraintrustLogger.error("Failed to export spans", e);
+            BraintrustLogger.error("Failed to export logs", e);
             return CompletableResultCode.ofFailure();
         }
     }
@@ -109,14 +109,14 @@ public class BraintrustSpanExporter implements SpanExporter {
     @Override
     public CompletableResultCode flush() {
         // Flush all cached exporters
-        var results = exporterCache.values().stream().map(OtlpHttpSpanExporter::flush).toList();
+        var results = exporterCache.values().stream().map(OtlpHttpLogRecordExporter::flush).toList();
         return CompletableResultCode.ofAll(results);
     }
 
     @Override
     public CompletableResultCode shutdown() {
         // Shutdown all cached exporters
-        var results = exporterCache.values().stream().map(OtlpHttpSpanExporter::shutdown).toList();
+        var results = exporterCache.values().stream().map(OtlpHttpLogRecordExporter::shutdown).toList();
         exporterCache.clear();
         return CompletableResultCode.ofAll(results);
     }
