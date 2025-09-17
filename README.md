@@ -46,4 +46,12 @@ To run a local collector:
 docker run --rm -p 4318:4318 -v "$PWD/localcollector/collector.yaml:/etc/otelcol/config.yaml" otel/opentelemetry-collector:latest
 ```
 
+To send otel data to the local collector:
+
+```
+# assumes you have BRAINTRUST_API_KEY and OPENAI_API_KEY exported
+export BRAINTRUST_API_URL="http://localhost:4318" ; export BRAINTRUST_TRACES_PATH="/v1/traces"; export BRAINTRUST_LOGS_PATH="/v1/logs" ; ./gradlew :examples:runOpenAIInstrumentation
+```
+
+
 ## TODO: finish these docs
