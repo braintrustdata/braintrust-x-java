@@ -33,9 +33,10 @@ dependencies {
     api "io.opentelemetry:opentelemetry-api:${otelVersion}"
     api "io.opentelemetry:opentelemetry-sdk:${otelVersion}"
     api "io.opentelemetry:opentelemetry-sdk-trace:${otelVersion}"
+    api "io.opentelemetry:opentelemetry-sdk-logs:${otelVersion}"
     implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
     implementation "io.opentelemetry:opentelemetry-semconv:1.25.0-alpha"
-    implementation "io.opentelemetry:opentelemetry-exporter-logging:1.45.0"
+    implementation "io.opentelemetry:opentelemetry-exporter-logging:${otelVersion}"
 
     // HTTP Client (Java 11+)
     implementation 'com.fasterxml.jackson.core:jackson-databind:' + jacksonVersion

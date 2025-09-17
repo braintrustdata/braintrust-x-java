@@ -25,7 +25,7 @@ public class BraintrustSpanExporter implements SpanExporter {
 
     public BraintrustSpanExporter(BraintrustConfig config) {
         this.config = config;
-        this.tracesEndpoint = config.apiUrl() + "/otel/v1/traces";
+        this.tracesEndpoint = config.apiUrl() + config.tracesPath();
     }
 
     @Override
@@ -97,7 +97,6 @@ public class BraintrustSpanExporter implements SpanExporter {
                             });
 
             BraintrustLogger.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
-
             // Export the spans
             return exporter.export(spans);
         } catch (Exception e) {

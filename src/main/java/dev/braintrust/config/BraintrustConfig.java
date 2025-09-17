@@ -17,17 +17,23 @@ public final class BraintrustConfig {
 
     private final String apiKey;
     private final URI apiUrl;
+    private final String tracesPath;
+    private final String logsPath;
     private final URI appUrl;
     @Nullable private final String defaultProjectId;
     @Nullable private final String orgName;
     private final boolean enableTraceConsoleLog;
     private final boolean debug;
     private final Duration requestTimeout;
+    private final boolean experimentalOtelLogs;
 
     private BraintrustConfig(Builder builder) {
         this.apiKey = builder.apiKey;
         this.apiUrl = builder.apiUrl;
+        this.tracesPath = builder.tracesPath;
+        this.logsPath = builder.logsPath;
         this.appUrl = builder.appUrl;
+        this.experimentalOtelLogs = builder.experimentalOtelLogs;
         this.defaultProjectId = builder.defaultProjectId;
         this.orgName = builder.orgName;
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
@@ -41,6 +47,14 @@ public final class BraintrustConfig {
 
     public URI apiUrl() {
         return apiUrl;
+    }
+
+    public String tracesPath() {
+        return tracesPath;
+    }
+
+    public String logsPath() {
+        return logsPath;
     }
 
     public URI appUrl() {
@@ -89,23 +103,29 @@ public final class BraintrustConfig {
     public static final class Builder {
         private String apiKey;
         private URI apiUrl;
+        private String tracesPath;
+        private String logsPath;
         private URI appUrl;
         private String defaultProjectId;
         private String orgName;
         private boolean enableTraceConsoleLog;
         private boolean debug;
+        private boolean experimentalOtelLogs;
         private Duration requestTimeout = Duration.ofSeconds(30);
 
         private Builder() {
             // Initialize from environment
             this.apiKey = getEnv("BRAINTRUST_API_KEY", null);
             this.apiUrl = URI.create(getEnv("BRAINTRUST_API_URL", DEFAULT_API_URL));
+            this.tracesPath = getEnv("BRAINTRUST_TRACES_PATH", "/otel/v1/traces");
+            this.logsPath = getEnv("BRAINTRUST_LOGS_PATH", "/otel/v1/logs");
             this.appUrl = URI.create(getEnv("BRAINTRUST_APP_URL", DEFAULT_APP_URL));
             this.orgName = getEnv("BRAINTRUST_ORG_NAME", null);
             this.defaultProjectId = getEnv("BRAINTRUST_DEFAULT_PROJECT_ID", null);
             this.enableTraceConsoleLog =
                     Boolean.parseBoolean(getEnv("BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG", "false"));
             this.debug = Boolean.parseBoolean(getEnv("BRAINTRUST_DEBUG", "false"));
+            this.experimentalOtelLogs = Boolean.parseBoolean(getEnv("BRAINTRUST_X_OTEL_LOGS", "false"));
         }
 
         public Builder apiKey(String apiKey) {
