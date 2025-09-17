@@ -30,13 +30,20 @@ First, install java 17 or greater
 ./gradlew :examples:runOpenAIInstrumentation
 ```
 
-# Developer Setup
+# Developer Docs
+## Setup
 
 TODO -- document sdkman, gradle, etc
 
 ## Running a local OpenTelemetry collector
+
 OpenTelemetry provides a local collector with a debug exporter which logs all traces, logs, and metrics to stdout.
 
 To run a local collector:
 
-TODO: finish these docs
+```
+# Assumes you're in the repo root
+docker run --rm -p 4318:4318 -v "$PWD/localcollector/collector.yaml:/etc/otelcol/config.yaml" otel/opentelemetry-collector:latest
+```
+
+## TODO: finish these docs
