@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Main entry point for Braintrust tracing setup. Provides convenient methods to initialize
@@ -173,11 +174,14 @@ public final class BraintrustTracing {
                             new Thread(
                                     () -> {
                                         BraintrustLogger.debug("Shutting down tracer provider. Force-Flushing all otel data.");
-                                        var result = CompletableResultCode.ofAll(List.of(
-                                                openTelemetry.getSdkLoggerProvider().forceFlush().join(10, TimeUnit.SECONDS),
-                                                openTelemetry.getSdkMeterProvider().forceFlush().join(10, TimeUnit.SECONDS),
-                                                openTelemetry.getSdkTracerProvider().forceFlush().join(10, TimeUnit.SECONDS)
-                                        ));
+                                        var result = CompletableResultCode.ofAll(
+                                                // run all flushes in parallel. Should block for approx 10 seconds max (which would be rare)
+                                                Stream.of(openTelemetry.getSdkLoggerProvider().forceFlush(),
+                                                                openTelemetry.getSdkMeterProvider().forceFlush(),
+                                                                openTelemetry.getSdkTracerProvider().forceFlush())
+                                                        .map(operation -> operation.join(10, TimeUnit.SECONDS))
+                                                        .toList()
+                                        );
                                         BraintrustLogger.debug("tracer shutdown complete. Flush successful? " + result.isSuccess());
                                         tracerProvider.shutdown();
                                     }));
