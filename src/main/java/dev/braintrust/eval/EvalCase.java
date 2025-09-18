@@ -12,10 +12,8 @@ import java.util.Objects;
  * @param expected expected value
  * @param tags additional tags to apply in the braintrust UI
  * @param metadata additional key-value data to apply in the braintrust UI
- * @param <INPUT>
- * @param <EXPECTED>
  */
-public record EvalCase<INPUT, EXPECTED>(INPUT input, EXPECTED expected, @Nonnull List<String> tags,
+public record EvalCase<INPUT, OUTPUT>(INPUT input, OUTPUT expected, @Nonnull List<String> tags,
                                         @Nonnull Map<String, Object> metadata) {
     public EvalCase {
         if (!metadata.isEmpty()) {
@@ -26,13 +24,13 @@ public record EvalCase<INPUT, EXPECTED>(INPUT input, EXPECTED expected, @Nonnull
         }
     }
 
-    public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected) {
+    public static <INPUT, OUTPUT> EvalCase<INPUT, OUTPUT> of(INPUT input, OUTPUT expected) {
         return of(input, expected, List.of(), Map.of());
     }
 
-    public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected, @Nonnull List<String> tags, @Nonnull Map<String, Object> metadata) {
+    public static <INPUT, OUTPUT> EvalCase<INPUT, OUTPUT> of(INPUT input, OUTPUT expected, @Nonnull List<String> tags, @Nonnull Map<String, Object> metadata) {
         return new EvalCase<>(input, expected, tags, metadata);
     }
 
-    public record Result<INPUT, EXPECTED, RESULT>(EvalCase<INPUT, EXPECTED> evalCase, RESULT result) {}
+    public record Result<INPUT, OUTPUT>(EvalCase<INPUT, OUTPUT> evalCase, OUTPUT result) {}
 }

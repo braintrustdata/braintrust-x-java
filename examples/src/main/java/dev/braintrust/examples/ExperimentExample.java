@@ -31,7 +31,7 @@ public class ExperimentExample {
             return response.choices().get(0).message().content().orElse("").toLowerCase();
         };
 
-        var eval = Eval.<String, String, String>builder()
+        var eval = Eval.<String, String>builder()
                 .name("java-eval-x-" + System.currentTimeMillis()) // NOTE: if you use a constant, additional runs will append new cases to the same experiment
                 .tracer(BraintrustTracing.getTracer(openTelemetry))
                 .config(config)
