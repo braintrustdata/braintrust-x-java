@@ -1,17 +1,24 @@
 package dev.braintrust.examples;
 
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.trace.BraintrustTracing;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.export.PeriodicMetricReader;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
+
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 /**
  * Example showing how to add Braintrust to an existing open telemetry setup.
@@ -43,6 +50,8 @@ public class CustomOpenTelemetryExample {
                 .setLoggerProvider(loggerBuilder.build())
                 .setMeterProvider(meterBuilder.build())
                 .build();
+        GlobalOpenTelemetry.set(openTelemetry);
+        registerShutdownHook(openTelemetry);
         var braintrustTracer = BraintrustTracing.getTracer(openTelemetry);
 
         // Now otel data will be exported to the local collector AND to braintrust
@@ -55,5 +64,21 @@ public class CustomOpenTelemetryExample {
             span.end();
         }
         System.out.println("custom example completed!");
+    }
+
+    private static void registerShutdownHook(OpenTelemetrySdk otel) {
+        Runtime.getRuntime()
+                .addShutdownHook(
+                        new Thread(
+                                () -> {
+                                    BraintrustLogger.debug("Shutting down. Force-Flushing all otel data.");
+                                    var result = CompletableResultCode.ofAll(
+                                            // run all flushes in parallel. Should (rarely) block for approx 10 seconds max
+                                            Stream.of(otel.getSdkTracerProvider().shutdown(), otel.getSdkLoggerProvider().shutdown(), otel.getSdkMeterProvider().shutdown())
+                                                    .map(operation -> operation.join(10, TimeUnit.SECONDS))
+                                                    .toList()
+                                    );
+                                    BraintrustLogger.debug("otel shutdown complete. Flush done: %s, Flush successful: %s".formatted(result.isDone(), result.isSuccess()));
+                                }));
     }
 }

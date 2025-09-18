@@ -4,7 +4,6 @@ import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
-import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.instrumentation.openai.BraintrustOpenAI;
 import dev.braintrust.trace.BraintrustTracing;
 
@@ -13,13 +12,12 @@ import dev.braintrust.trace.BraintrustTracing;
  */
 public class OpenAIInstrumentationExample {
     public static void main(String[] args) throws Exception {
-        var config = BraintrustConfig.builder().build();
-        var openTelemetry = BraintrustTracing.quickstart(config);
+        var openTelemetry = BraintrustTracing.quickstart();
         var tracer = BraintrustTracing.getTracer(openTelemetry);
         OpenAIClient openAIClient = BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());
         var rootSpan = tracer.spanBuilder("java-braintrust-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
-            Thread.sleep(70);
+            Thread.sleep(70); // Not required. This is just to make the span look interesting
             var request =
                     ChatCompletionCreateParams.builder()
                             .model(ChatModel.GPT_4O_MINI)
@@ -31,7 +29,7 @@ public class OpenAIInstrumentationExample {
             var response = openAIClient.chat().completions().create(request);
             System.out.println("~~~ GOT RESPONSE: " + response);
             openAIClient.completions();
-            Thread.sleep(30);
+            Thread.sleep(30); // Not required. This is just to make the span look interesting
         } finally {
             rootSpan.end();
         }
