@@ -5,6 +5,8 @@ import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.eval.Eval;
+import dev.braintrust.eval.EvalCase;
+import dev.braintrust.eval.Scorer;
 import dev.braintrust.instrumentation.openai.BraintrustOpenAI;
 import dev.braintrust.trace.BraintrustTracing;
 
@@ -33,13 +35,13 @@ public class ExperimentExample {
                 .name("java-eval-x-" + System.currentTimeMillis()) // NOTE: if you use a constant, additional runs will append new cases to the same experiment
                 .tracer(BraintrustTracing.getTracer(openTelemetry))
                 .config(config)
-                .cases(Eval.EvalCase.of("strawberry", "fruit"),
-                        Eval.EvalCase.of("asparagus", "vegetable"),
-                        Eval.EvalCase.of("apple", "fruit"),
-                        Eval.EvalCase.of("banana", "fruit"))
+                .cases(EvalCase.of("strawberry", "fruit"),
+                        EvalCase.of("asparagus", "vegetable"),
+                        EvalCase.of("apple", "fruit"),
+                        EvalCase.of("banana", "fruit"))
                 .task(getFoodType)
-                .scorers(Eval.Scorer.of("fruit_scorer", result -> "fruit".equals(result) ? 1.0 : 0.0),
-                        Eval.Scorer.of("vegetable_scorer", result -> "vegetable".equals(result) ? 1.0 : 0.0))
+                .scorers(Scorer.of("fruit_scorer", result -> "fruit".equals(result) ? 1.0 : 0.0),
+                        Scorer.of("vegetable_scorer", result -> "vegetable".equals(result) ? 1.0 : 0.0))
                 .build();
         var result = eval.run();
         System.out.println(result.createReportString());

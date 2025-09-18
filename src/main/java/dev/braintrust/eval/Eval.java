@@ -9,21 +9,18 @@ import dev.braintrust.trace.BraintrustContext;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Context;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * Main evaluation framework for testing AI models. Uses Java generics for type safety and streams
- * for functional processing.
+ * An evaluation framework for testing AI models.
  *
  * @param <INPUT> The type of input data for the evaluation
  * @param <EXPECTED> The type of output produced by the task
+ * @param <RESULT> The type of output produced by the task
  */
 public final class Eval<INPUT, EXPECTED, RESULT> {
     private static final ObjectMapper JSON_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -48,16 +45,16 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
     }
 
     /** Runs the evaluation and returns results. */
-    public EvalResult<INPUT, EXPECTED, RESULT> run() {
+    public Result run() {
         var experiment = client.createExperiment(new BraintrustApiClient.CreateExperimentRequest(projectName, experimentName, Optional.empty(), Optional.empty()));
         var experimentID = experiment.id();
         var evalCaseResults = evalCases.stream()
                 .map(evalCase -> evalOne(experimentID, evalCase))
                 .toList();
-        return new EvalResult<>(this);
+        return new Result();
     }
 
-    private EvalCaseResult<INPUT, EXPECTED, RESULT> evalOne(String experimentId, EvalCase<INPUT, EXPECTED> evalCase) {
+    private EvalCase.Result<INPUT, EXPECTED, RESULT> evalOne(String experimentId, EvalCase<INPUT, EXPECTED> evalCase) {
         var rootSpan =
                 tracer.spanBuilder("eval") // TODO: allow names for eval cases
                         .setNoParent() // each eval case is its own trace
@@ -116,7 +113,7 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
                     scoreSpan.end();
                 }
             }
-            return new EvalCaseResult<>(evalCase, result);
+            return new EvalCase.Result<>(evalCase, result);
         } finally {
             rootSpan.end();
         }
@@ -125,65 +122,16 @@ public final class Eval<INPUT, EXPECTED, RESULT> {
     /**
      * Results of all eval cases of an experiment.
      */
-    public static class EvalResult<INPUT, EXPECTED, RESULT> {
-        private final Eval<INPUT, EXPECTED, RESULT> eval;
-
-        private EvalResult(Eval<INPUT,EXPECTED,RESULT> eval) {
-            this.eval = eval;
-        }
-
+    public class Result {
         public String createReportString() {
             try {
-                var project = eval.client.getProject(eval.projectName).get().orElseThrow();
+                var project = client.getProject(projectName).get().orElseThrow();
                 // FIXME: don't hardcore the first part of the url. Need to check for staging and also get the actual org
-                var experimentUrl = "https://www.braintrust.dev/app/braintrustdata.com/p/" + project.name() + "/experiments/" + eval.experimentName;
+                var experimentUrl = "https://www.braintrust.dev/app/braintrustdata.com/p/" + project.name() + "/experiments/" + experimentName;
                 return "Experiment complete. View results in braintrust: " + experimentUrl;
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-        }
-    }
-
-    public record EvalCaseResult<INPUT, EXPECTED, RESULT>(EvalCase<INPUT, EXPECTED> evalCase, RESULT result) {}
-
-    public record EvalCase<INPUT, EXPECTED>(INPUT input, EXPECTED expected, @Nonnull List<String> tags, @Nonnull Metadata metadata) {
-        public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected) {
-            return of(input, expected, List.of(), new Metadata());
-        }
-        public static <INPUT, EXPECTED> EvalCase<INPUT, EXPECTED> of(INPUT input, EXPECTED expected, @Nonnull List<String> tags, @Nonnull Metadata metadata) {
-            return new EvalCase<>(input, expected, tags, metadata);
-        }
-    }
-
-    public record Metadata() {
-        // TODO implement: arbitrary map of string->json
-    }
-
-    public interface Task<INPUT, EXPECTED, RESULT> {
-        RESULT apply(EvalCase<INPUT, EXPECTED> evalCase);
-    }
-
-    public interface Scorer<INPUT, EXPECTED, RESULT> {
-        String getName();
-
-        double score(EvalCase<INPUT, EXPECTED> evalCase, RESULT result);
-
-        static <INPUT, EXPECTED, RESULT> Scorer<INPUT, EXPECTED, RESULT> of(String scorerName, BiFunction<EvalCase<INPUT, EXPECTED>, RESULT, Double> scorerFn) {
-            return new Scorer<>() {
-                @Override
-                public String getName() {
-                    return scorerName;
-                }
-
-                @Override
-                public double score(EvalCase<INPUT, EXPECTED> evalCase, RESULT result) {
-                    return scorerFn.apply(evalCase, result);
-                }
-            };
-        }
-
-        static <INPUT, EXPECTED, RESULT> Scorer<INPUT, EXPECTED, RESULT> of(String scorerName, Function<RESULT, Double> scorerFn) {
-            return of(scorerName, (evalCase, result) -> scorerFn.apply(result));
         }
     }
 
