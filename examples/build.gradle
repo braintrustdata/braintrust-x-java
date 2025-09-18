@@ -14,6 +14,8 @@ repositories {
 
 dependencies {
     implementation project(':')
+    // TODO: not sure why I have to do this. I would have expected this to come over in the project root transitive deps
+    implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
 
     // Official OpenAI Java SDK
     implementation 'com.openai:openai-java:2.8.1'
@@ -23,12 +25,17 @@ dependencies {
 }
 
 application {
-    mainClass = 'dev.braintrust.examples.OpenTelemetryTracingExample'
+    mainClass = 'dev.braintrust.examples.SimpleOpenTelemetryExample'
 }
 
-task runOpenTelemetryTracing(type: JavaExec) {
+task runSimpleOpenTelemetry(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'dev.braintrust.examples.OpenTelemetryTracingExample'
+    mainClass = 'dev.braintrust.examples.SimpleOpenTelemetryExample'
+}
+
+task runCustomOpenTelemetry(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.CustomOpenTelemetryExample'
 }
 
 task runOpenAIInstrumentation(type: JavaExec) {
@@ -41,7 +48,6 @@ task runOpenAIInstrumentation(type: JavaExec) {
     suspend = false
   }
 }
-
 
 task runExperiment(type: JavaExec) {
   classpath = sourceSets.main.runtimeClasspath

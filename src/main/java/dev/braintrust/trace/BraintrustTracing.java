@@ -8,15 +8,22 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.OpenTelemetrySdkBuilder;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.SdkLoggerProviderBuilder;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.metrics.SdkMeterProviderBuilder;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -31,31 +38,47 @@ import java.util.stream.Stream;
  */
 public final class BraintrustTracing {
     private static final String INSTRUMENTATION_NAME = "braintrust-java";
-    private static final String INSTRUMENTATION_VERSION = "0.1.0";
+    private static final String INSTRUMENTATION_VERSION = "0.0.1";
 
     private BraintrustTracing() {
         // Utility class
     }
 
     /**
-     * Quick start method that sets up OpenTelemetry with Braintrust defaults. This is the simplest
-     * way to get started.
+     * Quick start method that sets up global OpenTelemetry with Braintrust defaults.
+     * <br/><br/>
+     * If you're looking for more options for configuring Braintrust/OpenTelemetry, consult the `enable` method.
      */
     public static OpenTelemetry quickstart() {
-        return quickstart(BraintrustConfig.fromEnvironment());
+        return quickstart(BraintrustConfig.fromEnvironment(), true);
     }
 
-    /** Quick start with custom configuration. */
-    public static OpenTelemetry quickstart(BraintrustConfig config) {
-        return quickstart(config, builder -> {});
-    }
-
-    // TODO -- remove this constructor?
-    /** Quick start with custom configuration and additional setup. */
-    public static OpenTelemetry quickstart(BraintrustConfig config, Consumer<Builder> customizer) {
+    /**
+     * Quick start method that sets up OpenTelemetry with custom Braintrust and otel settings.
+     * <br/><br/>
+     * If you're looking for more options for configuring Braintrust and OpenTelemetry, consult the `enable` method.
+     */
+    public static OpenTelemetry quickstart(@Nonnull BraintrustConfig config, boolean registerGlobal) {
         var builder = new Builder(config);
-        customizer.accept(builder);
-        return builder.build();
+        var otel = builder.build();
+        if (registerGlobal) {
+            GlobalOpenTelemetry.set(otel);
+            BraintrustLogger.debug("Registered OpenTelemetry globally");
+        }
+        return otel;
+    }
+
+    /**
+     * Add braintrust to existing open telemetry builders
+     * <br/><br/>
+     * This method provides the most options for configuring Braintrust and OpenTelemetry. If you're looking for a more user-friendly setup, consult the `quickstart` methods.
+     * <br/><br/>
+     * NOTE: if your otel setup does not have any particular builder, pass an instance of the default provider builder. E.g. `SdkMeterProvider.builder()`
+     * <br/><br/>
+     * NOTE: This method should only be invoked once. Enabling Braintrust multiple times is unsupported and may lead to undesired behavior
+     */
+    public static void enable(@Nonnull BraintrustConfig config, @Nonnull SdkTracerProviderBuilder tracerProviderBuilder, @Nonnull SdkLoggerProviderBuilder loggerProviderBuilder, @Nonnull SdkMeterProviderBuilder meterProviderBuilder) {
+        throw new RuntimeException("TODO");
     }
 
     /** Gets a tracer with Braintrust instrumentation scope. */
@@ -65,7 +88,6 @@ public final class BraintrustTracing {
 
     /** Gets a tracer from a specific OpenTelemetry instance. */
     public static Tracer getTracer(OpenTelemetry openTelemetry) {
-        // TODO: will otel return some dummy object if we don't have a braintrust tracer? Are we call with that?
         return openTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
     }
 
@@ -77,7 +99,7 @@ public final class BraintrustTracing {
         private Duration exportInterval = Duration.ofSeconds(5);
         private int maxQueueSize = 2048;
         private int maxExportBatchSize = 512;
-        private boolean registerGlobal = true;
+        private boolean registerGlobal = true; // FIXME should be false by default and probably not here
 
         public Builder(BraintrustConfig config) {
             this.config = config;
@@ -113,16 +135,13 @@ public final class BraintrustTracing {
             return this;
         }
 
+        public OpenTelemetry build(SdkTracerProviderBuilder traceBuilder, SdkLoggerProviderBuilder logBuilder, SdkMeterProviderBuilder meterBuilder) {
+            throw new RuntimeException("TODO");
+        }
+
         public OpenTelemetry build() {
             BraintrustLogger.info(
                     "Initializing Braintrust OpenTelemetry with service={}", serviceName);
-
-            // Create OTLP HTTP exporter
-            // The Java OTLP HTTP exporter uses the exact endpoint we provide
-            var exporterEndpoint = config.apiUrl() + "/otel/v1/traces";
-
-            // Create the custom Braintrust exporter that handles x-bt-parent header
-            SpanExporter exporter = new BraintrustSpanExporter(config);
 
             // Create resource first so BraintrustSpanProcessor can access service.name
             var resourceBuilder =
@@ -135,7 +154,7 @@ public final class BraintrustTracing {
 
             // Create batch processor for efficient export
             var batchProcessor =
-                    BatchSpanProcessor.builder(exporter)
+                    BatchSpanProcessor.builder(new BraintrustSpanExporter(config))
                             .setScheduleDelay(exportInterval.toMillis(), TimeUnit.MILLISECONDS)
                             .setMaxQueueSize(maxQueueSize)
                             .setMaxExportBatchSize(maxExportBatchSize)
