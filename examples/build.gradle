@@ -29,33 +29,41 @@ application {
 }
 
 task runSimpleOpenTelemetry(type: JavaExec) {
+    group = 'Braintrust SDK Examples'
+    description = 'Run the simple OpenTelemetry example'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'dev.braintrust.examples.SimpleOpenTelemetryExample'
 }
 
 task runCustomOpenTelemetry(type: JavaExec) {
+    group = 'Braintrust SDK Examples'
+    description = 'Run the custom OpenTelemetry example'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'dev.braintrust.examples.CustomOpenTelemetryExample'
 }
 
 task runOpenAIInstrumentation(type: JavaExec) {
-  classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'dev.braintrust.examples.OpenAIInstrumentationExample'
-  debugOptions {
-    enabled = true
-    port = 5566
-    server = true
-    suspend = false
-  }
+    group = 'Braintrust SDK Examples'
+    description = 'Run the OpenAI instrumentation example. NOTE: this requires OPENAI_API_KEY to be exported and will make a small call to openai, using your tokens'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.OpenAIInstrumentationExample'
+    debugOptions {
+        enabled = true
+        port = 5566
+        server = true
+        suspend = false
+    }
 }
 
 task runExperiment(type: JavaExec) {
-  classpath = sourceSets.main.runtimeClasspath
-  mainClass = 'dev.braintrust.examples.ExperimentExample'
-  debugOptions {
-    enabled = true
-    port = 5566
-    server = true
-    suspend = false
-  }
+    group = 'Braintrust SDK Examples'
+    description = 'Run the experiment example'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.braintrust.examples.ExperimentExample'
+    debugOptions {
+        enabled = true
+        port = 5566
+        server = true
+        suspend = false
+    }
 }

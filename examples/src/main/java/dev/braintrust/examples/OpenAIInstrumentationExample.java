@@ -12,6 +12,9 @@ import dev.braintrust.trace.BraintrustTracing;
  */
 public class OpenAIInstrumentationExample {
     public static void main(String[] args) throws Exception {
+        if (null == System.getenv("OPENAI_API_KEY")) {
+            System.err.println("\nWARNING envar OPEN_AI_API_KEY not found. This example will likely fail.\n");
+        }
         var openTelemetry = BraintrustTracing.quickstart();
         var tracer = BraintrustTracing.getTracer(openTelemetry);
         OpenAIClient openAIClient = BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());
