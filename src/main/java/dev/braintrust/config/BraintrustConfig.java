@@ -11,7 +11,7 @@ import javax.annotation.Nullable;
  * variable support.
  */
 public final class BraintrustConfig {
-    public static final String FALLBACK_PROJECT_NAME = "default-java-project";
+    private static final String DEFAULT_PROJECT_NAME = "default-java-project";
     private static final String DEFAULT_API_URL = "https://api.braintrust.dev";
     private static final String DEFAULT_APP_URL = "https://www.braintrust.dev";
 
@@ -21,6 +21,7 @@ public final class BraintrustConfig {
     private final String logsPath;
     private final URI appUrl;
     @Nullable private final String defaultProjectId;
+    @Nullable private final String defaultProjectName;
     private final boolean enableTraceConsoleLog;
     private final boolean debug;
     private final Duration requestTimeout;
@@ -34,6 +35,7 @@ public final class BraintrustConfig {
         this.appUrl = builder.appUrl;
         this.experimentalOtelLogs = builder.experimentalOtelLogs;
         this.defaultProjectId = builder.defaultProjectId;
+        this.defaultProjectName = builder.defaultProjectName;
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
         this.debug = builder.debug;
         this.requestTimeout = builder.requestTimeout;
@@ -63,6 +65,10 @@ public final class BraintrustConfig {
         return Optional.ofNullable(defaultProjectId);
     }
 
+    public Optional<String> defaultProjectName() {
+        return Optional.ofNullable(defaultProjectName);
+    }
+
     public boolean enableTraceConsoleLog() {
         return enableTraceConsoleLog;
     }
@@ -73,6 +79,25 @@ public final class BraintrustConfig {
 
     public Duration requestTimeout() {
         return requestTimeout;
+    }
+
+    /**
+     * The parent attribute tells braintrust where to send otel data
+     * <br/><br/>
+     * The otel ingestion endpoint looks for (a) braintrust.parent = project_id|project_name|experiment_id:value otel attribute and routes accordingly
+     * <br/><br/>
+     * (b) if a span has no parent marked explicitly, it will look to see if there's an x-bt-parent http header (with the same format marked above e.g. project_name:andrew) that parent will apply to all spans in a request that don't have one
+     * <br/><br/>
+     * If neither (a) nor (b) exists, the data is dropped
+     */
+    public Optional<String> getBraintrustParentValue() {
+        if (null != defaultProjectId) {
+            return Optional.of("project_id:" + defaultProjectId);
+        } else if (null != defaultProjectName) {
+            return Optional.of("project_name:" + defaultProjectName);
+        } else {
+            return Optional.empty();
+        }
     }
 
     /** Creates a new builder initialized with environment variables. */
@@ -101,19 +126,20 @@ public final class BraintrustConfig {
         private String logsPath;
         private URI appUrl;
         private String defaultProjectId;
+        private String defaultProjectName;
         private boolean enableTraceConsoleLog;
         private boolean debug;
         private boolean experimentalOtelLogs;
         private Duration requestTimeout = Duration.ofSeconds(30);
 
         private Builder() {
-            // Initialize from environment
             this.apiKey = getEnv("BRAINTRUST_API_KEY", null);
             this.apiUrl = URI.create(getEnv("BRAINTRUST_API_URL", DEFAULT_API_URL));
             this.tracesPath = getEnv("BRAINTRUST_TRACES_PATH", "/otel/v1/traces");
             this.logsPath = getEnv("BRAINTRUST_LOGS_PATH", "/otel/v1/logs");
             this.appUrl = URI.create(getEnv("BRAINTRUST_APP_URL", DEFAULT_APP_URL));
             this.defaultProjectId = getEnv("BRAINTRUST_DEFAULT_PROJECT_ID", null);
+            this.defaultProjectName = getEnv("BRAINTRUST_DEFAULT_PROJECT", DEFAULT_PROJECT_NAME);
             this.enableTraceConsoleLog =
                     Boolean.parseBoolean(getEnv("BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG", "false"));
             this.debug = Boolean.parseBoolean(getEnv("BRAINTRUST_DEBUG", "false"));
