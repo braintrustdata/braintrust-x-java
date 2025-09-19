@@ -4,6 +4,7 @@ import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.instrumentation.openai.BraintrustOpenAI;
 import dev.braintrust.trace.BraintrustTracing;
 
@@ -15,7 +16,8 @@ public class OpenAIInstrumentationExample {
         if (null == System.getenv("OPENAI_API_KEY")) {
             System.err.println("\nWARNING envar OPEN_AI_API_KEY not found. This example will likely fail.\n");
         }
-        var openTelemetry = BraintrustTracing.quickstart();
+        var braintrustConfig = BraintrustConfig.fromEnvironment();
+        var openTelemetry = BraintrustTracing.quickstart(braintrustConfig, true);
         var tracer = BraintrustTracing.getTracer(openTelemetry);
         OpenAIClient openAIClient = BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());
         var rootSpan = tracer.spanBuilder("java-braintrust-example").startSpan();
@@ -36,6 +38,7 @@ public class OpenAIInstrumentationExample {
         } finally {
             rootSpan.end();
         }
-        System.out.println("example completed!");
+        var url = braintrustConfig.fetchProjectURI() + "/logs?r=%s&s=%s".formatted(rootSpan.getSpanContext().getTraceId(), rootSpan.getSpanContext().getSpanId());
+        System.out.println("\n\nExample complete! View your data in Braintrust: " + url);
     }
 }

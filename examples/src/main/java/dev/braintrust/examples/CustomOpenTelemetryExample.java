@@ -4,7 +4,6 @@ import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
-import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.exporter.otlp.http.metrics.OtlpHttpMetricExporter;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
@@ -43,7 +42,8 @@ public class CustomOpenTelemetryExample {
 
         // NOTE: there are many ways to set up otel builders, etc.
         // The important line is here: call enable with your otel builders and braintrust will export open telemetry data in addition to your existing setup
-        BraintrustTracing.enable(BraintrustConfig.fromEnvironment(), tracerBuilder, loggerBuilder, meterBuilder);
+        var braintrustConfig = BraintrustConfig.fromEnvironment();
+        BraintrustTracing.enable(braintrustConfig, tracerBuilder, loggerBuilder, meterBuilder);
 
         var openTelemetry = OpenTelemetrySdk.builder()
                 .setTracerProvider(tracerBuilder.build())
@@ -63,7 +63,8 @@ public class CustomOpenTelemetryExample {
         } finally {
             span.end();
         }
-        System.out.println("custom example completed!");
+        var url = braintrustConfig.fetchProjectURI() + "/logs?r=%s&s=%s".formatted(span.getSpanContext().getTraceId(), span.getSpanContext().getSpanId());
+        System.out.println("\n\nExample complete! View your data in Braintrust: " + url);
     }
 
     private static void registerShutdownHook(OpenTelemetrySdk otel) {

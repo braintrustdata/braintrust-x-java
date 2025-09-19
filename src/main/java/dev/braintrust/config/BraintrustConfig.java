@@ -1,6 +1,9 @@
 package dev.braintrust.config;
 
+import dev.braintrust.api.BraintrustApiClient;
+
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -11,7 +14,7 @@ import javax.annotation.Nullable;
  * variable support.
  */
 public final class BraintrustConfig {
-    public static final String FALLBACK_PROJECT_NAME = "default-java-project";
+    private static final String DEFAULT_PROJECT_NAME = "default-java-project";
     private static final String DEFAULT_API_URL = "https://api.braintrust.dev";
     private static final String DEFAULT_APP_URL = "https://www.braintrust.dev";
 
@@ -21,7 +24,7 @@ public final class BraintrustConfig {
     private final String logsPath;
     private final URI appUrl;
     @Nullable private final String defaultProjectId;
-    @Nullable private final String orgName;
+    @Nullable private final String defaultProjectName;
     private final boolean enableTraceConsoleLog;
     private final boolean debug;
     private final Duration requestTimeout;
@@ -35,7 +38,7 @@ public final class BraintrustConfig {
         this.appUrl = builder.appUrl;
         this.experimentalOtelLogs = builder.experimentalOtelLogs;
         this.defaultProjectId = builder.defaultProjectId;
-        this.orgName = builder.orgName;
+        this.defaultProjectName = builder.defaultProjectName;
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
         this.debug = builder.debug;
         this.requestTimeout = builder.requestTimeout;
@@ -65,8 +68,8 @@ public final class BraintrustConfig {
         return Optional.ofNullable(defaultProjectId);
     }
 
-    public Optional<String> orgName() {
-        return Optional.ofNullable(orgName);
+    public Optional<String> defaultProjectName() {
+        return Optional.ofNullable(defaultProjectName);
     }
 
     public boolean enableTraceConsoleLog() {
@@ -81,6 +84,25 @@ public final class BraintrustConfig {
         return requestTimeout;
     }
 
+    /**
+     * The parent attribute tells braintrust where to send otel data
+     * <br/><br/>
+     * The otel ingestion endpoint looks for (a) braintrust.parent = project_id|project_name|experiment_id:value otel attribute and routes accordingly
+     * <br/><br/>
+     * (b) if a span has no parent marked explicitly, it will look to see if there's an x-bt-parent http header (with the same format marked above e.g. project_name:andrew) that parent will apply to all spans in a request that don't have one
+     * <br/><br/>
+     * If neither (a) nor (b) exists, the data is dropped
+     */
+    public Optional<String> getBraintrustParentValue() {
+        if (null != defaultProjectId) {
+            return Optional.of("project_id:" + defaultProjectId);
+        } else if (null != defaultProjectName) {
+            return Optional.of("project_name:" + defaultProjectName);
+        } else {
+            return Optional.empty();
+        }
+    }
+
     /** Creates a new builder initialized with environment variables. */
     public static Builder builder() {
         return new Builder();
@@ -91,13 +113,14 @@ public final class BraintrustConfig {
         return builder().build();
     }
 
-    /**
-     * Creates a config with a consumer for customization and retrieves organization name from API.
-     */
-    public static BraintrustConfig create(Consumer<Builder> customizer) {
-        var builder = builder();
-        customizer.accept(builder);
-        return builder.build();
+    public URI fetchProjectURI() {
+        try {
+            var client = new BraintrustApiClient(this);
+            var orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
+            return new URI(appUrl() + "/app/" + orgAndProject.orgInfo().name() + "/p/" +  orgAndProject.project().name());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static final class Builder {
@@ -107,21 +130,26 @@ public final class BraintrustConfig {
         private String logsPath;
         private URI appUrl;
         private String defaultProjectId;
-        private String orgName;
+        private String defaultProjectName;
         private boolean enableTraceConsoleLog;
         private boolean debug;
         private boolean experimentalOtelLogs;
         private Duration requestTimeout = Duration.ofSeconds(30);
 
         private Builder() {
-            // Initialize from environment
             this.apiKey = getEnv("BRAINTRUST_API_KEY", null);
             this.apiUrl = URI.create(getEnv("BRAINTRUST_API_URL", DEFAULT_API_URL));
             this.tracesPath = getEnv("BRAINTRUST_TRACES_PATH", "/otel/v1/traces");
             this.logsPath = getEnv("BRAINTRUST_LOGS_PATH", "/otel/v1/logs");
             this.appUrl = URI.create(getEnv("BRAINTRUST_APP_URL", DEFAULT_APP_URL));
-            this.orgName = getEnv("BRAINTRUST_ORG_NAME", null);
             this.defaultProjectId = getEnv("BRAINTRUST_DEFAULT_PROJECT_ID", null);
+            this.defaultProjectName = getEnv("BRAINTRUST_DEFAULT_PROJECT", DEFAULT_PROJECT_NAME).trim();
+            if ((null == defaultProjectId || "".equalsIgnoreCase(defaultProjectId.trim()))
+                    && "".equalsIgnoreCase(defaultProjectName)) {
+                // NOTE: this should not happen,
+                // but if someone happens to export their default project to the empty string and does not set a default project ID we don't have a valid parent for otel data.
+                throw new RuntimeException("Missing required envars. Please export BRAINTRUST_DEFAULT_PROJECT_ID or BRAINTRUST_DEFAULT_PROJECT");
+            }
             this.enableTraceConsoleLog =
                     Boolean.parseBoolean(getEnv("BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG", "false"));
             this.debug = Boolean.parseBoolean(getEnv("BRAINTRUST_DEBUG", "false"));
@@ -156,11 +184,6 @@ public final class BraintrustConfig {
             return this;
         }
 
-        public Builder orgName(String orgName) {
-            this.orgName = orgName;
-            return this;
-        }
-
         public Builder enableTraceConsoleLog(boolean enable) {
             this.enableTraceConsoleLog = enable;
             return this;
@@ -179,11 +202,6 @@ public final class BraintrustConfig {
         public BraintrustConfig build() {
             if (apiKey == null || apiKey.isBlank()) {
                 throw new IllegalStateException("API key is required. Set BRAINTRUST_API_KEY environment variable or use apiKey() method.");
-            }
-
-            // If orgName is not already set, try to retrieve it from the API
-            if (orgName == null || orgName.isBlank()) {
-                throw new IllegalStateException("org name is required");
             }
 
             return new BraintrustConfig(this);

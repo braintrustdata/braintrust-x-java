@@ -67,8 +67,7 @@ public class BraintrustLogExporter implements LogRecordExporter {
             return "project_id:" + projectId;
         }
 
-        // Use default project ID if configured
-        return config.defaultProjectId().map(id -> "project_id:" + id).orElse("");
+        return config.getBraintrustParentValue().orElse("");
     }
 
     private CompletableResultCode exportWithParent(String parent, List<LogRecordData> logs) {

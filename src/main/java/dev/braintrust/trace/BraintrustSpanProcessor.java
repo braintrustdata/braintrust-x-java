@@ -65,16 +65,17 @@ public class BraintrustSpanProcessor implements SpanProcessor {
             var btContext = BraintrustContext.fromContext(parentContext);
             if (btContext == null) {
                 // Use default project ID if configured
-                config.defaultProjectId()
+                config.getBraintrustParentValue()
                         .ifPresent(
-                                projectId -> {
-                                    span.setAttribute(PARENT, "project_id:" + projectId);
+                                parentValue -> {
+                                    span.setAttribute(PARENT, parentValue);
                                     BraintrustLogger.debug(
-                                            "OnStart: set default project {} for span {}",
-                                            projectId,
+                                            "OnStart: set parent {} for span {}",
+                                            parentValue,
                                             span.getName());
                                 });
             } else {
+                // Can braintrust context have project_name instead?
                 btContext
                         .projectId()
                         .ifPresent(

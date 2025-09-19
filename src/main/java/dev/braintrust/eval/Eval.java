@@ -24,9 +24,9 @@ import java.util.function.Function;
 public final class Eval<INPUT, OUTPUT> {
     private static final ObjectMapper JSON_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
     private final @Nonnull String experimentName;
-    private final @Nonnull String projectName;
     private final @Nonnull BraintrustConfig config;
     private final @Nonnull BraintrustApiClient client;
+    private final @Nonnull BraintrustApiClient.OrganizationAndProjectInfo orgAndProject;
     private final @Nonnull Tracer tracer;
     private final @Nonnull List<EvalCase<INPUT, OUTPUT>> evalCases;
     private final @Nonnull Task<INPUT, OUTPUT> task;
@@ -34,9 +34,14 @@ public final class Eval<INPUT, OUTPUT> {
 
     private Eval(Builder<INPUT, OUTPUT> builder) {
         this.experimentName = builder.experimentName;
-        this.projectName = Objects.requireNonNull(builder.projectName);
         this.config = Objects.requireNonNull(builder.config);
         this.client = new BraintrustApiClient(config);
+        if (null == builder.projectId) {
+            this.orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
+        } else {
+            this.orgAndProject = client.getProjectAndOrgInfo(builder.projectId)
+                    .orElseThrow(() -> new RuntimeException("invalid project id: " + builder.projectId));
+        }
         this.tracer = Objects.requireNonNull(builder.tracer);
         this.evalCases = List.copyOf(builder.evalCases);
         this.task = Objects.requireNonNull(builder.task);
@@ -45,7 +50,7 @@ public final class Eval<INPUT, OUTPUT> {
 
     /** Runs the evaluation and returns results. */
     public Result run() {
-        var experiment = client.createExperiment(new BraintrustApiClient.CreateExperimentRequest(projectName, experimentName, Optional.empty(), Optional.empty()));
+        var experiment = client.getOrCreateExperiment(new BraintrustApiClient.CreateExperimentRequest(orgAndProject.project().id(), experimentName, Optional.empty(), Optional.empty()));
         var experimentID = experiment.id();
         var evalCaseResults = evalCases.stream()
                 .map(evalCase -> evalOne(experimentID, evalCase))
@@ -122,11 +127,14 @@ public final class Eval<INPUT, OUTPUT> {
      * Results of all eval cases of an experiment.
      */
     public class Result {
+        private final String experimentUrl;
+
+        private Result() {
+            this.experimentUrl = config.appUrl() + "/app/" + orgAndProject.orgInfo().name() + "/p/" +  orgAndProject.project().name() + "/experiments/" + experimentName;
+        }
+
         public String createReportString() {
             try {
-                var project = client.getProject(projectName).get().orElseThrow();
-                // FIXME: don't hardcore the first part of the url. Need to check for staging and also get the actual org
-                var experimentUrl = "https://www.braintrust.dev/app/braintrustdata.com/p/" + project.name() + "/experiments/" + experimentName;
                 return "Experiment complete. View results in braintrust: " + experimentUrl;
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -143,7 +151,7 @@ public final class Eval<INPUT, OUTPUT> {
     public static final class Builder<INPUT, OUTPUT> {
         private @Nonnull String experimentName = "unnamed-java-eval";
         private @Nullable BraintrustConfig config;
-        private @Nullable String projectName;
+        private @Nullable String projectId;
         private @Nullable Tracer tracer = null;
         private @Nonnull List<EvalCase<INPUT, OUTPUT>> evalCases = List.of();
         private @Nullable Task<INPUT, OUTPUT> task;
@@ -156,8 +164,8 @@ public final class Eval<INPUT, OUTPUT> {
             if (tracer == null) {
                 tracer = BraintrustTracing.getTracer();
             }
-            if (projectName == null) {
-                projectName = config.defaultProjectId().orElse(BraintrustConfig.FALLBACK_PROJECT_NAME);
+            if (projectId == null) {
+                projectId = config.defaultProjectId().orElse(null);
             }
             if (evalCases.isEmpty()) {
                 throw new RuntimeException("must provide at least one eval case");
@@ -169,13 +177,13 @@ public final class Eval<INPUT, OUTPUT> {
             return new Eval<>(this);
         }
 
-        public Builder<INPUT, OUTPUT> name(String name) {
-            this.experimentName = name;
+        public Builder<INPUT, OUTPUT> name(@Nonnull String name) {
+            this.experimentName = Objects.requireNonNull(name);
             return this;
         }
 
-        public Builder<INPUT, OUTPUT> projectName(@Nonnull String projectName) {
-            this.projectName = Objects.requireNonNull(projectName);
+        public Builder<INPUT, OUTPUT> projectId(@Nonnull String projectId) {
+            this.projectId = Objects.requireNonNull(projectId);
             return this;
         }
 
