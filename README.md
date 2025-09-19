@@ -2,35 +2,39 @@
 
 An OpenTelemetry-based Braintrust SDK for Java 17 and up. Contains instrumentation for major AI vendors (OpenAI, Anthropic, etc)
 
-# Basic Usage
+**WARNING (HERE BE DRAGONS):** *This is an experimental SDK for Braintrust. APIs are in active development and cannot be relied upon.*
 
-## Using the SDK in your code
+# Quickstart (Running examples and reporting data to Braintrust)
 
-Add to your `build.gradle`:
+Prerequisites:
+- A Braintrust account and a valid BRAINTRUST_API_KEY
+- Java 17 (or greater):
+    - macOS: `brew install openjdk@17`
+    - Ubuntu: `sudo apt install openjdk-17-jdk`
 
-```gradle
-dependencies {
-    implementation 'dev.braintrust:braintrust-x-java:0.1.0'
-}
+Then, from the repo root:
+```
+# assumes you have BRAINTRUST_API_KEY exported
+./gradlew :examples:runSimpleOpenTelemetry
 ```
 
-## Running examples
-
-NOTE: if you wish to develop the SDK you can skip this section (developer setup includes a better way to set up the JDK).
-
-First, install java 17 or greater
-
-- **Java 17** (LTS) - Required for building and running
-  - macOS: `brew install openjdk@17`
-  - Ubuntu/Debian: `sudo apt install openjdk-17-jdk`
-  - Windows: Download from [Adoptium](https://adoptium.net/)
-
+If you wish to see all examples run:
 ```
-# assumes you have BRAINTRUST_API_KEY and OPENAI_API_KEY exported
-./gradlew :examples:runOpenAIInstrumentation
+./gradlew :examples:tasks --group="Braintrust SDK Examples"
 ```
 
-# Developer Docs
+Source code for all examples can be found here: [./examples/src/main/java/dev/braintrust/examples](./examples/src/main/java/dev/braintrust/examples)
+
+If you wish to hack around with the examples you can modify source then re-run the gradle task.
+
+# Using the SDK in your code
+
+TODO: update this section when we have published our first release
+
+# Developer Setup
+
+This section documents how to set up your machine to develop the SDK. This is not required if you simply wish to use the SDK or run examples.
+
 ## Setup
 
 TODO -- document sdkman, gradle, etc

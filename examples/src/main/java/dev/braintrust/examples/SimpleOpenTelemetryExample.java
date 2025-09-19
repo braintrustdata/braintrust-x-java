@@ -1,25 +1,20 @@
 package dev.braintrust.examples;
 
-import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.trace.BraintrustTracing;
 
-/**
- * Basic OTel tracing example
- */
-public class OpenTelemetryTracingExample {
+public class SimpleOpenTelemetryExample {
     public static void main(String[] args) throws Exception {
-        var config = BraintrustConfig.builder().build();
-        var openTelemetry = BraintrustTracing.quickstart(config);
+        var openTelemetry = BraintrustTracing.quickstart();
         var tracer = BraintrustTracing.getTracer(openTelemetry);
 
         var span = tracer.spanBuilder("hello-java").startSpan();
         try (var ignored = span.makeCurrent()) {
             System.out.println("Performing simple operation...");
-            span.setAttribute("is-java-span", true);
-            Thread.sleep(100);
+            span.setAttribute("some boolean attribute", true);
+            Thread.sleep(100); // Not required. This is just to make the span look interesting
         } finally {
             span.end();
         }
-        System.out.println("example completed!");
+        System.out.println("simple example completed!");
     }
 }
