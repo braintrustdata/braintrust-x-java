@@ -1,6 +1,9 @@
 package dev.braintrust.config;
 
+import dev.braintrust.api.BraintrustApiClient;
+
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -110,13 +113,14 @@ public final class BraintrustConfig {
         return builder().build();
     }
 
-    /**
-     * Creates a config with a consumer for customization and retrieves organization name from API.
-     */
-    public static BraintrustConfig create(Consumer<Builder> customizer) {
-        var builder = builder();
-        customizer.accept(builder);
-        return builder.build();
+    public URI fetchProjectURI() {
+        try {
+            var client = new BraintrustApiClient(this);
+            var orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
+            return new URI(appUrl() + "/app/" + orgAndProject.orgInfo().name() + "/p/" +  orgAndProject.project().name());
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static final class Builder {

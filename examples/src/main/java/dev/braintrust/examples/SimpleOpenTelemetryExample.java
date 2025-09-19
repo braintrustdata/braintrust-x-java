@@ -1,10 +1,12 @@
 package dev.braintrust.examples;
 
+import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.trace.BraintrustTracing;
 
 public class SimpleOpenTelemetryExample {
     public static void main(String[] args) throws Exception {
-        var openTelemetry = BraintrustTracing.quickstart();
+        var braintrustConfig = BraintrustConfig.fromEnvironment();
+        var openTelemetry = BraintrustTracing.quickstart(braintrustConfig, true);
         var tracer = BraintrustTracing.getTracer(openTelemetry);
 
         var span = tracer.spanBuilder("hello-java").startSpan();
@@ -15,6 +17,7 @@ public class SimpleOpenTelemetryExample {
         } finally {
             span.end();
         }
-        System.out.println("simple example completed!");
+        var url = braintrustConfig.fetchProjectURI() + "/logs?r=%s&s=%s".formatted(span.getSpanContext().getTraceId(), span.getSpanContext().getSpanId());
+        System.out.println("\n\nExample complete! View your data in Braintrust: " + url);
     }
 }

@@ -36,9 +36,9 @@ public class BraintrustApiClient {
     }
 
     /** Creates or gets a project by name. */
-    public Project getOrCreateProjectByName(String name) {
+    public Project getOrCreateProject(String projectName) {
         try {
-            var request = new CreateProjectRequest(name);
+            var request = new CreateProjectRequest(projectName);
             return postAsync("/v1/project", request, Project.class).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
@@ -80,6 +80,36 @@ public class BraintrustApiClient {
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo() {
+        var projectId = config.defaultProjectId().orElse(null);
+        if (null == projectId) {
+           projectId = getOrCreateProject(config.defaultProjectName().orElseThrow()).id();
+        }
+        return getProjectAndOrgInfo(projectId);
+    }
+
+    public Optional<OrganizationAndProjectInfo> getOrCreateProjectAndOrgInfo(String projectName) {
+        return getProjectAndOrgInfo(getOrCreateProject(projectName).id());
+    }
+
+    public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo(String projectId) {
+        var project = getProject(projectId).orElse(null);
+        if (null == project) {
+            return Optional.empty();
+        }
+        OrganizationInfo orgInfo = null;
+        for (var org : login().orgInfo()) {
+            if (project.orgId().equalsIgnoreCase(org.id())) {
+                orgInfo = org;
+                break;
+            }
+        }
+        if (null == orgInfo) {
+            throw new ApiException("Should not happen. Unable to find project's org: " + project.orgId());
+        }
+        return Optional.of(new OrganizationAndProjectInfo(orgInfo, project));
     }
 
     private <T> CompletableFuture<T> getAsync(String path, Class<T> responseType) {
@@ -237,4 +267,6 @@ public class BraintrustApiClient {
     private record LoginRequest(String token) {}
 
     public record LoginResponse(List<OrganizationInfo> orgInfo) {}
+
+    public record OrganizationAndProjectInfo(OrganizationInfo orgInfo, Project project) {}
 }

@@ -26,8 +26,7 @@ public final class Eval<INPUT, OUTPUT> {
     private final @Nonnull String experimentName;
     private final @Nonnull BraintrustConfig config;
     private final @Nonnull BraintrustApiClient client;
-    private final @Nonnull BraintrustApiClient.Project project;
-    private final @Nonnull BraintrustApiClient.OrganizationInfo orgInfo;
+    private final @Nonnull BraintrustApiClient.OrganizationAndProjectInfo orgAndProject;
     private final @Nonnull Tracer tracer;
     private final @Nonnull List<EvalCase<INPUT, OUTPUT>> evalCases;
     private final @Nonnull Task<INPUT, OUTPUT> task;
@@ -37,23 +36,12 @@ public final class Eval<INPUT, OUTPUT> {
         this.experimentName = builder.experimentName;
         this.config = Objects.requireNonNull(builder.config);
         this.client = new BraintrustApiClient(config);
-        // TODO: come up with a more consistent way to fetch project and org info
         if (null == builder.projectId) {
-            this.project = client.getOrCreateProjectByName(config.defaultProjectName().orElseThrow());
+            this.orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
         } else {
-            this.project = client.getProject(builder.projectId).orElseThrow(() -> new RuntimeException("invalid project id: " + builder.projectId));
+            this.orgAndProject = client.getProjectAndOrgInfo(builder.projectId)
+                    .orElseThrow(() -> new RuntimeException("invalid project id: " + builder.projectId));
         }
-        BraintrustApiClient.OrganizationInfo orgInfo = null;
-        for (var org : client.login().orgInfo()) {
-            if (project.orgId().equalsIgnoreCase(org.id())) {
-                orgInfo = org;
-                break;
-            }
-        }
-        if (null == orgInfo) {
-            throw new RuntimeException("Should not happen. Unable to find project's org: " + project.orgId());
-        }
-        this.orgInfo = orgInfo;
         this.tracer = Objects.requireNonNull(builder.tracer);
         this.evalCases = List.copyOf(builder.evalCases);
         this.task = Objects.requireNonNull(builder.task);
@@ -62,7 +50,7 @@ public final class Eval<INPUT, OUTPUT> {
 
     /** Runs the evaluation and returns results. */
     public Result run() {
-        var experiment = client.getOrCreateExperiment(new BraintrustApiClient.CreateExperimentRequest(project.id(), experimentName, Optional.empty(), Optional.empty()));
+        var experiment = client.getOrCreateExperiment(new BraintrustApiClient.CreateExperimentRequest(orgAndProject.project().id(), experimentName, Optional.empty(), Optional.empty()));
         var experimentID = experiment.id();
         var evalCaseResults = evalCases.stream()
                 .map(evalCase -> evalOne(experimentID, evalCase))
@@ -142,7 +130,7 @@ public final class Eval<INPUT, OUTPUT> {
         private final String experimentUrl;
 
         private Result() {
-            this.experimentUrl = config.appUrl() + "/app/" + orgInfo.name() + "/p/" +  project.name() + "/experiments/" + experimentName;
+            this.experimentUrl = config.appUrl() + "/app/" + orgAndProject.orgInfo().name() + "/p/" +  orgAndProject.project().name() + "/experiments/" + experimentName;
         }
 
         public String createReportString() {
