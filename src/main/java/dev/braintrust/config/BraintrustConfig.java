@@ -21,7 +21,6 @@ public final class BraintrustConfig {
     private final String logsPath;
     private final URI appUrl;
     @Nullable private final String defaultProjectId;
-    @Nullable private final String orgName;
     private final boolean enableTraceConsoleLog;
     private final boolean debug;
     private final Duration requestTimeout;
@@ -35,7 +34,6 @@ public final class BraintrustConfig {
         this.appUrl = builder.appUrl;
         this.experimentalOtelLogs = builder.experimentalOtelLogs;
         this.defaultProjectId = builder.defaultProjectId;
-        this.orgName = builder.orgName;
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
         this.debug = builder.debug;
         this.requestTimeout = builder.requestTimeout;
@@ -63,10 +61,6 @@ public final class BraintrustConfig {
 
     public Optional<String> defaultProjectId() {
         return Optional.ofNullable(defaultProjectId);
-    }
-
-    public Optional<String> orgName() {
-        return Optional.ofNullable(orgName);
     }
 
     public boolean enableTraceConsoleLog() {
@@ -107,7 +101,6 @@ public final class BraintrustConfig {
         private String logsPath;
         private URI appUrl;
         private String defaultProjectId;
-        private String orgName;
         private boolean enableTraceConsoleLog;
         private boolean debug;
         private boolean experimentalOtelLogs;
@@ -120,7 +113,6 @@ public final class BraintrustConfig {
             this.tracesPath = getEnv("BRAINTRUST_TRACES_PATH", "/otel/v1/traces");
             this.logsPath = getEnv("BRAINTRUST_LOGS_PATH", "/otel/v1/logs");
             this.appUrl = URI.create(getEnv("BRAINTRUST_APP_URL", DEFAULT_APP_URL));
-            this.orgName = getEnv("BRAINTRUST_ORG_NAME", null);
             this.defaultProjectId = getEnv("BRAINTRUST_DEFAULT_PROJECT_ID", null);
             this.enableTraceConsoleLog =
                     Boolean.parseBoolean(getEnv("BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG", "false"));
@@ -156,11 +148,6 @@ public final class BraintrustConfig {
             return this;
         }
 
-        public Builder orgName(String orgName) {
-            this.orgName = orgName;
-            return this;
-        }
-
         public Builder enableTraceConsoleLog(boolean enable) {
             this.enableTraceConsoleLog = enable;
             return this;
@@ -179,11 +166,6 @@ public final class BraintrustConfig {
         public BraintrustConfig build() {
             if (apiKey == null || apiKey.isBlank()) {
                 throw new IllegalStateException("API key is required. Set BRAINTRUST_API_KEY environment variable or use apiKey() method.");
-            }
-
-            // If orgName is not already set, try to retrieve it from the API
-            if (orgName == null || orgName.isBlank()) {
-                throw new IllegalStateException("org name is required");
             }
 
             return new BraintrustConfig(this);

@@ -42,18 +42,22 @@ public class BraintrustApiClient {
     }
 
     /** Gets a project by ID. */
-    public CompletableFuture<Optional<Project>> getProject(String projectId) {
-        return getAsync("/v1/project/" + projectId, Project.class)
-                .handle(
-                        (project, error) -> {
-                            if (error != null && isNotFound(error)) {
-                                return Optional.<Project>empty();
-                            }
-                            if (error != null) {
-                                throw new CompletionException(error);
-                            }
-                            return Optional.of(project);
-                        });
+    public Optional<Project> getProject(String projectId) {
+        try {
+            return getAsync("/v1/project/" + projectId, Project.class)
+                    .handle(
+                            (project, error) -> {
+                                if (error != null && isNotFound(error)) {
+                                    return Optional.<Project>empty();
+                                }
+                                if (error != null) {
+                                    throw new CompletionException(error);
+                                }
+                                return Optional.of(project);
+                            }).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /** Lists all projects. */
@@ -111,9 +115,12 @@ public class BraintrustApiClient {
     }
 
     /** Login to get user information including organization details. */
-    public CompletableFuture<LoginResponse> login() {
-        var request = new LoginRequest(config.apiKey());
-        return postAsync("/api/apikey/login", request, LoginResponse.class);
+    public LoginResponse login() {
+        try {
+            return postAsync("/api/apikey/login", new LoginRequest(config.apiKey()), LoginResponse.class).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // Low-level HTTP methods

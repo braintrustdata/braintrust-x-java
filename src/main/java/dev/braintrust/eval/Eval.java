@@ -13,6 +13,7 @@ import io.opentelemetry.api.trace.Tracer;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
@@ -122,11 +123,16 @@ public final class Eval<INPUT, OUTPUT> {
      * Results of all eval cases of an experiment.
      */
     public class Result {
+        private final String experimentUrl;
+
+        private Result() {
+            var loginResponse = client.login();
+            var project = client.getProject(projectName).orElseThrow();
+            this.experimentUrl = config.appUrl() + "/app/" + loginResponse.orgInfo() + "/p/" +  project.name() + "/experiments/" + experimentName;
+        }
+
         public String createReportString() {
             try {
-                var project = client.getProject(projectName).get().orElseThrow();
-                // FIXME: don't hardcore the first part of the url. Need to check for staging and also get the actual org
-                var experimentUrl = "https://www.braintrust.dev/app/braintrustdata.com/p/" + project.name() + "/experiments/" + experimentName;
                 return "Experiment complete. View results in braintrust: " + experimentUrl;
             } catch (Exception e) {
                 throw new RuntimeException(e);
