@@ -44,6 +44,6 @@ public class ExperimentExample {
                         Scorer.of("vegetable_scorer", result -> "vegetable".equals(result) ? 1.0 : 0.0))
                 .build();
         var result = eval.run();
-        System.out.println("\n\n example complete! View your data in Braintrust: " + result.createReportString());
+        System.out.println("\n\n Example complete! View your data in Braintrust: " + result.createReportString());
     }
 }

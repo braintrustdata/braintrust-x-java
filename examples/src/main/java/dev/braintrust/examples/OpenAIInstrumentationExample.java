@@ -38,7 +38,7 @@ public class OpenAIInstrumentationExample {
         } finally {
             rootSpan.end();
         }
-        var url = braintrustConfig.fetchProjectURI() + "/logs?r=%s&s=%s".formatted(rootSpan.getSpanContext().getTraceId(), rootSpan.getSpanContext().getSpanId());
-        System.out.println("\n\nExample complete! View your data in Braintrust: " + url);
+        var url = braintrustConfig.fetchProjectURI() + "/logs?r=%s&s=%s".formatted(rootSpan.getSpanContext().getSpanId(), rootSpan.getSpanContext().getSpanId());
+        System.out.println("\n\n  Example complete! View your data in Braintrust: " + url);
     }
 }
