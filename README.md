@@ -11,10 +11,10 @@ Prerequisites:
 - Java 17 (or greater):
     - macOS: `brew install openjdk@17`
     - Ubuntu: `sudo apt install openjdk-17-jdk`
+- (Optional to run the oai example) a valid OPENAI_API_KEY
 
 Then, from the repo root:
 ```
-# assumes you have BRAINTRUST_API_KEY exported
 ./gradlew :examples:runSimpleOpenTelemetry
 ```
 
