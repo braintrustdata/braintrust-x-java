@@ -139,7 +139,13 @@ public final class BraintrustConfig {
             this.logsPath = getEnv("BRAINTRUST_LOGS_PATH", "/otel/v1/logs");
             this.appUrl = URI.create(getEnv("BRAINTRUST_APP_URL", DEFAULT_APP_URL));
             this.defaultProjectId = getEnv("BRAINTRUST_DEFAULT_PROJECT_ID", null);
-            this.defaultProjectName = getEnv("BRAINTRUST_DEFAULT_PROJECT", DEFAULT_PROJECT_NAME);
+            this.defaultProjectName = getEnv("BRAINTRUST_DEFAULT_PROJECT", DEFAULT_PROJECT_NAME).trim();
+            if ((null == defaultProjectId || "".equalsIgnoreCase(defaultProjectId.trim()))
+                    && "".equalsIgnoreCase(defaultProjectName)) {
+                // NOTE: this should not happen,
+                // but if someone happens to export their default project to the empty string and does not set a default project ID we don't have a valid parent for otel data.
+                throw new RuntimeException("Missing required envars. Please export BRAINTRUST_DEFAULT_PROJECT_ID or BRAINTRUST_DEFAULT_PROJECT");
+            }
             this.enableTraceConsoleLog =
                     Boolean.parseBoolean(getEnv("BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG", "false"));
             this.debug = Boolean.parseBoolean(getEnv("BRAINTRUST_DEBUG", "false"));

@@ -36,9 +36,13 @@ public class BraintrustApiClient {
     }
 
     /** Creates or gets a project by name. */
-    public CompletableFuture<Project> createProject(String name) {
-        var request = new CreateProjectRequest(name);
-        return postAsync("/v1/project", request, Project.class);
+    public Project getOrCreateProjectByName(String name) {
+        try {
+            var request = new CreateProjectRequest(name);
+            return postAsync("/v1/project", request, Project.class).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /** Gets a project by ID. */
@@ -60,58 +64,13 @@ public class BraintrustApiClient {
         }
     }
 
-    /** Lists all projects. */
-    public CompletableFuture<List<Project>> listProjects() {
-        return getAsync("/v1/project", ProjectList.class).thenApply(ProjectList::projects);
-    }
-
     /** Creates an experiment. */
-    public Experiment createExperiment(CreateExperimentRequest request) {
+    public Experiment getOrCreateExperiment(CreateExperimentRequest request) {
         try {
             return postAsync("/v1/experiment", request, Experiment.class).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new ApiException(e);
         }
-    }
-
-    /** Gets an experiment by ID. */
-    public CompletableFuture<Optional<Experiment>> getExperiment(String experimentId) {
-        return getAsync("/v1/experiment/" + experimentId, Experiment.class)
-                .handle(
-                        (experiment, error) -> {
-                            if (error != null && isNotFound(error)) {
-                                return Optional.<Experiment>empty();
-                            }
-                            if (error != null) {
-                                throw new CompletionException(error);
-                            }
-                            return Optional.of(experiment);
-                        });
-    }
-
-    /** Lists experiments for a project. */
-    public CompletableFuture<List<Experiment>> listExperiments(String projectId) {
-        return getAsync("/v1/experiment?project_id=" + projectId, ExperimentList.class)
-                .thenApply(ExperimentList::experiments);
-    }
-
-    /** Creates a dataset. */
-    public CompletableFuture<Dataset> createDataset(CreateDatasetRequest request) {
-        return postAsync("/v1/dataset", request, Dataset.class);
-    }
-
-    /** Inserts events into a dataset. */
-    public CompletableFuture<InsertEventsResponse> insertDatasetEvents(
-            String datasetId, List<DatasetEvent> events) {
-        var request = new InsertEventsRequest(events);
-        return postAsync(
-                "/v1/dataset/" + datasetId + "/insert", request, InsertEventsResponse.class);
-    }
-
-    /** Lists datasets for a project. */
-    public CompletableFuture<List<Dataset>> listDatasets(String projectId) {
-        return getAsync("/v1/dataset?project_id=" + projectId, DatasetList.class)
-                .thenApply(DatasetList::datasets);
     }
 
     /** Login to get user information including organization details. */
@@ -122,8 +81,6 @@ public class BraintrustApiClient {
             throw new RuntimeException(e);
         }
     }
-
-    // Low-level HTTP methods
 
     private <T> CompletableFuture<T> getAsync(String path, Class<T> responseType) {
         var request =
