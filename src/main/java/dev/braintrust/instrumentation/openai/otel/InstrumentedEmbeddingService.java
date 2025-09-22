@@ -15,57 +15,57 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import java.lang.reflect.Method;
 
 final class InstrumentedEmbeddingService
-    extends DelegatingInvocationHandler<EmbeddingService, InstrumentedEmbeddingService> {
+        extends DelegatingInvocationHandler<EmbeddingService, InstrumentedEmbeddingService> {
 
-  private final Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> instrumenter;
+    private final Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> instrumenter;
 
-  public InstrumentedEmbeddingService(
-      EmbeddingService delegate,
-      Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> instrumenter) {
-    super(delegate);
-    this.instrumenter = instrumenter;
-  }
-
-  @Override
-  protected Class<EmbeddingService> getProxyType() {
-    return EmbeddingService.class;
-  }
-
-  @Override
-  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    String methodName = method.getName();
-    Class<?>[] parameterTypes = method.getParameterTypes();
-
-    if (methodName.equals("create")
-        && parameterTypes.length >= 1
-        && parameterTypes[0] == EmbeddingCreateParams.class) {
-      if (parameterTypes.length == 1) {
-        return create((EmbeddingCreateParams) args[0], RequestOptions.none());
-      } else if (parameterTypes.length == 2 && parameterTypes[1] == RequestOptions.class) {
-        return create((EmbeddingCreateParams) args[0], (RequestOptions) args[1]);
-      }
+    public InstrumentedEmbeddingService(
+            EmbeddingService delegate,
+            Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> instrumenter) {
+        super(delegate);
+        this.instrumenter = instrumenter;
     }
 
-    return super.invoke(proxy, method, args);
-  }
-
-  private CreateEmbeddingResponse create(
-      EmbeddingCreateParams request, RequestOptions requestOptions) {
-    Context parentContext = Context.current();
-    if (!instrumenter.shouldStart(parentContext, request)) {
-      return delegate.create(request, requestOptions);
+    @Override
+    protected Class<EmbeddingService> getProxyType() {
+        return EmbeddingService.class;
     }
 
-    Context context = instrumenter.start(parentContext, request);
-    CreateEmbeddingResponse response;
-    try (Scope ignored = context.makeCurrent()) {
-      response = delegate.create(request, requestOptions);
-    } catch (Throwable t) {
-      instrumenter.end(context, request, null, t);
-      throw t;
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        String methodName = method.getName();
+        Class<?>[] parameterTypes = method.getParameterTypes();
+
+        if (methodName.equals("create")
+                && parameterTypes.length >= 1
+                && parameterTypes[0] == EmbeddingCreateParams.class) {
+            if (parameterTypes.length == 1) {
+                return create((EmbeddingCreateParams) args[0], RequestOptions.none());
+            } else if (parameterTypes.length == 2 && parameterTypes[1] == RequestOptions.class) {
+                return create((EmbeddingCreateParams) args[0], (RequestOptions) args[1]);
+            }
+        }
+
+        return super.invoke(proxy, method, args);
     }
 
-    instrumenter.end(context, request, response, null);
-    return response;
-  }
+    private CreateEmbeddingResponse create(
+            EmbeddingCreateParams request, RequestOptions requestOptions) {
+        Context parentContext = Context.current();
+        if (!instrumenter.shouldStart(parentContext, request)) {
+            return delegate.create(request, requestOptions);
+        }
+
+        Context context = instrumenter.start(parentContext, request);
+        CreateEmbeddingResponse response;
+        try (Scope ignored = context.makeCurrent()) {
+            response = delegate.create(request, requestOptions);
+        } catch (Throwable t) {
+            instrumenter.end(context, request, null, t);
+            throw t;
+        }
+
+        instrumenter.end(context, request, response, null);
+        return response;
+    }
 }

@@ -1,9 +1,8 @@
 package dev.braintrust.eval;
 
-import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import javax.annotation.Nonnull;
 
 /**
  * A single test case in an LLM eval.
@@ -13,8 +12,11 @@ import java.util.Objects;
  * @param tags additional tags to apply in the braintrust UI
  * @param metadata additional key-value data to apply in the braintrust UI
  */
-public record EvalCase<INPUT, OUTPUT>(INPUT input, OUTPUT expected, @Nonnull List<String> tags,
-                                        @Nonnull Map<String, Object> metadata) {
+public record EvalCase<INPUT, OUTPUT>(
+        INPUT input,
+        OUTPUT expected,
+        @Nonnull List<String> tags,
+        @Nonnull Map<String, Object> metadata) {
     public EvalCase {
         if (!metadata.isEmpty()) {
             throw new RuntimeException("TODO: metadata support not yet implemented");
@@ -28,7 +30,11 @@ public record EvalCase<INPUT, OUTPUT>(INPUT input, OUTPUT expected, @Nonnull Lis
         return of(input, expected, List.of(), Map.of());
     }
 
-    public static <INPUT, OUTPUT> EvalCase<INPUT, OUTPUT> of(INPUT input, OUTPUT expected, @Nonnull List<String> tags, @Nonnull Map<String, Object> metadata) {
+    public static <INPUT, OUTPUT> EvalCase<INPUT, OUTPUT> of(
+            INPUT input,
+            OUTPUT expected,
+            @Nonnull List<String> tags,
+            @Nonnull Map<String, Object> metadata) {
         return new EvalCase<>(input, expected, tags, metadata);
     }
 

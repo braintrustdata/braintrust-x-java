@@ -7,7 +7,6 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.log.BraintrustLogger;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -58,7 +57,8 @@ public class BraintrustApiClient {
                                     throw new CompletionException(error);
                                 }
                                 return Optional.of(project);
-                            }).get();
+                            })
+                    .get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
@@ -76,7 +76,11 @@ public class BraintrustApiClient {
     /** Login to get user information including organization details. */
     public LoginResponse login() {
         try {
-            return postAsync("/api/apikey/login", new LoginRequest(config.apiKey()), LoginResponse.class).get();
+            return postAsync(
+                            "/api/apikey/login",
+                            new LoginRequest(config.apiKey()),
+                            LoginResponse.class)
+                    .get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }
@@ -85,7 +89,7 @@ public class BraintrustApiClient {
     public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo() {
         var projectId = config.defaultProjectId().orElse(null);
         if (null == projectId) {
-           projectId = getOrCreateProject(config.defaultProjectName().orElseThrow()).id();
+            projectId = getOrCreateProject(config.defaultProjectName().orElseThrow()).id();
         }
         return getProjectAndOrgInfo(projectId);
     }
@@ -107,7 +111,8 @@ public class BraintrustApiClient {
             }
         }
         if (null == orgInfo) {
-            throw new ApiException("Should not happen. Unable to find project's org: " + project.orgId());
+            throw new ApiException(
+                    "Should not happen. Unable to find project's org: " + project.orgId());
         }
         return Optional.of(new OrganizationAndProjectInfo(orgInfo, project));
     }

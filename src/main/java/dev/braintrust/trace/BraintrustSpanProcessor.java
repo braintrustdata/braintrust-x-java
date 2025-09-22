@@ -11,12 +11,11 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-import org.jetbrains.annotations.NotNull;
-
-import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import javax.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Custom span processor that enriches spans with Braintrust-specific attributes. Supports parent
@@ -29,22 +28,31 @@ public class BraintrustSpanProcessor implements SpanProcessor {
 
     // Legacy attributes for backward compatibility (deprecated)
     @Deprecated
-    public static final AttributeKey<String> PARENT_PROJECT_ID = AttributeKey.stringKey("braintrust.parent.project_id");
+    public static final AttributeKey<String> PARENT_PROJECT_ID =
+            AttributeKey.stringKey("braintrust.parent.project_id");
 
     @Deprecated
-    public static final AttributeKey<String> PARENT_EXPERIMENT_ID = AttributeKey.stringKey("braintrust.parent.experiment_id");
+    public static final AttributeKey<String> PARENT_EXPERIMENT_ID =
+            AttributeKey.stringKey("braintrust.parent.experiment_id");
 
     @Deprecated
-    public static final AttributeKey<String> PARENT_TYPE = AttributeKey.stringKey("braintrust.parent.type");
+    public static final AttributeKey<String> PARENT_TYPE =
+            AttributeKey.stringKey("braintrust.parent.type");
+
     // Usage metrics
-    public static final AttributeKey<Long> USAGE_PROMPT_TOKENS = AttributeKey.longKey("braintrust.usage.prompt_tokens");
-    public static final AttributeKey<Long> USAGE_COMPLETION_TOKENS = AttributeKey.longKey("braintrust.usage.completion_tokens");
-    public static final AttributeKey<Long> USAGE_TOTAL_TOKENS = AttributeKey.longKey("braintrust.usage.total_tokens");
-    public static final AttributeKey<Double> USAGE_COST = AttributeKey.doubleKey("braintrust.usage.cost");
+    public static final AttributeKey<Long> USAGE_PROMPT_TOKENS =
+            AttributeKey.longKey("braintrust.usage.prompt_tokens");
+    public static final AttributeKey<Long> USAGE_COMPLETION_TOKENS =
+            AttributeKey.longKey("braintrust.usage.completion_tokens");
+    public static final AttributeKey<Long> USAGE_TOTAL_TOKENS =
+            AttributeKey.longKey("braintrust.usage.total_tokens");
+    public static final AttributeKey<Double> USAGE_COST =
+            AttributeKey.doubleKey("braintrust.usage.cost");
 
     // Scoring
     public static final AttributeKey<Double> SCORE = AttributeKey.doubleKey("braintrust.score");
-    public static final AttributeKey<String> SCORE_NAME = AttributeKey.stringKey("braintrust.score.name");
+    public static final AttributeKey<String> SCORE_NAME =
+            AttributeKey.stringKey("braintrust.score.name");
 
     private final BraintrustConfig config;
     private final SpanProcessor delegate;
@@ -139,14 +147,14 @@ public class BraintrustSpanProcessor implements SpanProcessor {
     private void logSpanDetails(ReadableSpan span) {
         var spanData = span.toSpanData();
         BraintrustLogger.debug(
-                "Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={}, events={}",
+                "Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={},"
+                        + " events={}",
                 spanData.getName(),
                 spanData.getTraceId(),
                 spanData.getSpanId(),
                 (spanData.getEndEpochNanos() - spanData.getStartEpochNanos()) / 1_000_000,
                 spanData.getAttributes(),
-                spanData.getEvents()
-        );
+                spanData.getEvents());
     }
 
     /** Parent context for spans (project or experiment). */

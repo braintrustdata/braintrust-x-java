@@ -13,37 +13,40 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import java.lang.reflect.Method;
 
 final class InstrumentedChatServiceAsync
-    extends DelegatingInvocationHandler<ChatServiceAsync, InstrumentedChatServiceAsync> {
+        extends DelegatingInvocationHandler<ChatServiceAsync, InstrumentedChatServiceAsync> {
 
-  private final Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter;
-  private final Logger eventLogger;
-  private final boolean captureMessageContent;
+    private final Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter;
+    private final Logger eventLogger;
+    private final boolean captureMessageContent;
 
-  InstrumentedChatServiceAsync(
-      ChatServiceAsync delegate,
-      Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter,
-      Logger eventLogger,
-      boolean captureMessageContent) {
-    super(delegate);
-    this.instrumenter = instrumenter;
-    this.eventLogger = eventLogger;
-    this.captureMessageContent = captureMessageContent;
-  }
-
-  @Override
-  protected Class<ChatServiceAsync> getProxyType() {
-    return ChatServiceAsync.class;
-  }
-
-  @Override
-  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    String methodName = method.getName();
-    Class<?>[] parameterTypes = method.getParameterTypes();
-    if (methodName.equals("completions") && parameterTypes.length == 0) {
-      return new InstrumentedChatCompletionServiceAsync(
-              delegate.completions(), instrumenter, eventLogger, captureMessageContent)
-          .createProxy();
+    InstrumentedChatServiceAsync(
+            ChatServiceAsync delegate,
+            Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter,
+            Logger eventLogger,
+            boolean captureMessageContent) {
+        super(delegate);
+        this.instrumenter = instrumenter;
+        this.eventLogger = eventLogger;
+        this.captureMessageContent = captureMessageContent;
     }
-    return super.invoke(proxy, method, args);
-  }
+
+    @Override
+    protected Class<ChatServiceAsync> getProxyType() {
+        return ChatServiceAsync.class;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        String methodName = method.getName();
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        if (methodName.equals("completions") && parameterTypes.length == 0) {
+            return new InstrumentedChatCompletionServiceAsync(
+                            delegate.completions(),
+                            instrumenter,
+                            eventLogger,
+                            captureMessageContent)
+                    .createProxy();
+        }
+        return super.invoke(proxy, method, args);
+    }
 }

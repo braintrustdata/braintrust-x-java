@@ -9,11 +9,10 @@ import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Function;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * An evaluation framework for testing AI models.
@@ -22,7 +21,8 @@ import java.util.function.Function;
  * @param <OUTPUT> The type of output produced by the task
  */
 public final class Eval<INPUT, OUTPUT> {
-    private static final ObjectMapper JSON_MAPPER = new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final ObjectMapper JSON_MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper();
     private final @Nonnull String experimentName;
     private final @Nonnull BraintrustConfig config;
     private final @Nonnull BraintrustApiClient client;
@@ -39,8 +39,12 @@ public final class Eval<INPUT, OUTPUT> {
         if (null == builder.projectId) {
             this.orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
         } else {
-            this.orgAndProject = client.getProjectAndOrgInfo(builder.projectId)
-                    .orElseThrow(() -> new RuntimeException("invalid project id: " + builder.projectId));
+            this.orgAndProject =
+                    client.getProjectAndOrgInfo(builder.projectId)
+                            .orElseThrow(
+                                    () ->
+                                            new RuntimeException(
+                                                    "invalid project id: " + builder.projectId));
         }
         this.tracer = Objects.requireNonNull(builder.tracer);
         this.evalCases = List.copyOf(builder.evalCases);
@@ -50,66 +54,95 @@ public final class Eval<INPUT, OUTPUT> {
 
     /** Runs the evaluation and returns results. */
     public Result run() {
-        var experiment = client.getOrCreateExperiment(new BraintrustApiClient.CreateExperimentRequest(orgAndProject.project().id(), experimentName, Optional.empty(), Optional.empty()));
+        var experiment =
+                client.getOrCreateExperiment(
+                        new BraintrustApiClient.CreateExperimentRequest(
+                                orgAndProject.project().id(),
+                                experimentName,
+                                Optional.empty(),
+                                Optional.empty()));
         var experimentID = experiment.id();
-        var evalCaseResults = evalCases.stream()
-                .map(evalCase -> evalOne(experimentID, evalCase))
-                .toList();
+        var evalCaseResults =
+                evalCases.stream().map(evalCase -> evalOne(experimentID, evalCase)).toList();
         return new Result();
     }
 
-    private EvalCase.Result<INPUT, OUTPUT> evalOne(String experimentId, EvalCase<INPUT, OUTPUT> evalCase) {
+    private EvalCase.Result<INPUT, OUTPUT> evalOne(
+            String experimentId, EvalCase<INPUT, OUTPUT> evalCase) {
         var rootSpan =
                 tracer.spanBuilder("eval") // TODO: allow names for eval cases
                         .setNoParent() // each eval case is its own trace
                         .setSpanKind(SpanKind.CLIENT)
-                        .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
+                        .setAttribute(
+                                BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
                         .setAttribute("braintrust.span_attributes", "{\"type\":\"eval\"}")
                         // FIXME: use proper object mapper for json stuff
-                        .setAttribute("braintrust.input_json", "{ \"input\":\"" + evalCase.input() + "\"}")
+                        .setAttribute(
+                                "braintrust.input_json",
+                                "{ \"input\":\"" + evalCase.input() + "\"}")
                         .setAttribute("braintrust.expected", "\"" + evalCase.expected() + "\"")
                         // TODO: these attributes are deprecated apparently? Do we need to set them?
                         .setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, experimentId)
                         .setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment")
                         .startSpan();
-        try (var rootScope = BraintrustContext.forExperiment(experimentId, rootSpan).makeCurrent()) {
+        try (var rootScope =
+                BraintrustContext.forExperiment(experimentId, rootSpan).makeCurrent()) {
             final OUTPUT result;
             { // run task
-                var taskSpan = tracer.spanBuilder("task")
-                        .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
-                        .setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}")
-                        .startSpan();
-                try (var unused = BraintrustContext.forExperiment(experimentId, taskSpan).makeCurrent()){
+                var taskSpan =
+                        tracer.spanBuilder("task")
+                                .setAttribute(
+                                        BraintrustSpanProcessor.PARENT,
+                                        "experiment_id:" + experimentId)
+                                .setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}")
+                                .startSpan();
+                try (var unused =
+                        BraintrustContext.forExperiment(experimentId, taskSpan).makeCurrent()) {
                     result = task.apply(evalCase);
                 } finally {
                     taskSpan.end();
                 }
                 try {
-                    rootSpan.setAttribute("braintrust.output_json", JSON_MAPPER.writeValueAsString(Map.of("output", String.valueOf(result))));
+                    rootSpan.setAttribute(
+                            "braintrust.output_json",
+                            JSON_MAPPER.writeValueAsString(
+                                    Map.of("output", String.valueOf(result))));
                 } catch (JsonProcessingException e) {
                     throw new RuntimeException(e);
                 }
             }
             { // run scorers
-                var scoreSpan = tracer.spanBuilder("score")
-                        .setAttribute(BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
-                        .setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}")
-                        .startSpan();
-                try (var unused = BraintrustContext.forExperiment(experimentId, scoreSpan).makeCurrent()){
-                    // NOTE: linked hash map to preserve ordering. Not in the spec but nice user experience
+                var scoreSpan =
+                        tracer.spanBuilder("score")
+                                .setAttribute(
+                                        BraintrustSpanProcessor.PARENT,
+                                        "experiment_id:" + experimentId)
+                                .setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}")
+                                .startSpan();
+                try (var unused =
+                        BraintrustContext.forExperiment(experimentId, scoreSpan).makeCurrent()) {
+                    // NOTE: linked hash map to preserve ordering. Not in the spec but nice user
+                    // experience
                     final HashMap<String, Double> nameToScore = new LinkedHashMap<>();
-                    var scores = scorers.stream()
-                            .map(scorer -> {
-                                var score = scorer.score(evalCase, result);
-                                if (score < 0.0 || score > 1.0) {
-                                    throw new RuntimeException("score must be between 0 and 1: " + scorer.getName() + " : " + score);
-                                }
-                                nameToScore.put(scorer.getName(), score);
-                                return score;
-                            })
-                            .toList();
+                    var scores =
+                            scorers.stream()
+                                    .map(
+                                            scorer -> {
+                                                var score = scorer.score(evalCase, result);
+                                                if (score < 0.0 || score > 1.0) {
+                                                    throw new RuntimeException(
+                                                            "score must be between 0 and 1: "
+                                                                    + scorer.getName()
+                                                                    + " : "
+                                                                    + score);
+                                                }
+                                                nameToScore.put(scorer.getName(), score);
+                                                return score;
+                                            })
+                                    .toList();
                     try {
-                        scoreSpan.setAttribute("braintrust.scores", JSON_MAPPER.writeValueAsString(nameToScore));
+                        scoreSpan.setAttribute(
+                                "braintrust.scores", JSON_MAPPER.writeValueAsString(nameToScore));
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -123,14 +156,19 @@ public final class Eval<INPUT, OUTPUT> {
         }
     }
 
-    /**
-     * Results of all eval cases of an experiment.
-     */
+    /** Results of all eval cases of an experiment. */
     public class Result {
         private final String experimentUrl;
 
         private Result() {
-            this.experimentUrl = config.appUrl() + "/app/" + orgAndProject.orgInfo().name() + "/p/" +  orgAndProject.project().name() + "/experiments/" + experimentName;
+            this.experimentUrl =
+                    config.appUrl()
+                            + "/app/"
+                            + orgAndProject.orgInfo().name()
+                            + "/p/"
+                            + orgAndProject.project().name()
+                            + "/experiments/"
+                            + experimentName;
         }
 
         public String createReportString() {
