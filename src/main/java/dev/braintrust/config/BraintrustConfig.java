@@ -7,10 +7,7 @@ import java.time.Duration;
 import java.util.Optional;
 import javax.annotation.Nullable;
 
-/**
- * Configuration for Braintrust SDK. Uses builder pattern with sensible defaults and environment
- * variable support.
- */
+/** Configuration for Braintrust SDK */
 public final class BraintrustConfig {
     private static final String DEFAULT_PROJECT_NAME = "default-java-project";
     private static final String DEFAULT_API_URL = "https://api.braintrust.dev";
@@ -40,6 +37,15 @@ public final class BraintrustConfig {
         this.enableTraceConsoleLog = builder.enableTraceConsoleLog;
         this.debug = builder.debug;
         this.requestTimeout = builder.requestTimeout;
+        if ((null == defaultProjectId || "".equalsIgnoreCase(defaultProjectId.trim()))
+                && (null == defaultProjectName || "".equalsIgnoreCase(defaultProjectName.trim()))) {
+            // NOTE: this should not happen,
+            // but if someone happens to export their default project to the empty string and
+            // does not set a default project ID we don't have a valid parent for otel data.
+            throw new RuntimeException(
+                    "Missing required envars. Please export BRAINTRUST_DEFAULT_PROJECT_ID or"
+                            + " BRAINTRUST_DEFAULT_PROJECT");
+        }
     }
 
     public String apiKey() {
@@ -151,15 +157,6 @@ public final class BraintrustConfig {
             this.defaultProjectId = getEnv("BRAINTRUST_DEFAULT_PROJECT_ID", null);
             this.defaultProjectName =
                     getEnv("BRAINTRUST_DEFAULT_PROJECT", DEFAULT_PROJECT_NAME).trim();
-            if ((null == defaultProjectId || "".equalsIgnoreCase(defaultProjectId.trim()))
-                    && "".equalsIgnoreCase(defaultProjectName)) {
-                // NOTE: this should not happen,
-                // but if someone happens to export their default project to the empty string and
-                // does not set a default project ID we don't have a valid parent for otel data.
-                throw new RuntimeException(
-                        "Missing required envars. Please export BRAINTRUST_DEFAULT_PROJECT_ID or"
-                                + " BRAINTRUST_DEFAULT_PROJECT");
-            }
             this.enableTraceConsoleLog =
                     Boolean.parseBoolean(getEnv("BRAINTRUST_ENABLE_TRACE_CONSOLE_LOG", "false"));
             this.debug = Boolean.parseBoolean(getEnv("BRAINTRUST_DEBUG", "false"));
@@ -192,6 +189,11 @@ public final class BraintrustConfig {
 
         public Builder defaultProjectId(String projectId) {
             this.defaultProjectId = projectId;
+            return this;
+        }
+
+        public Builder defaultProjectName(String projectName) {
+            this.defaultProjectName = projectName;
             return this;
         }
 
