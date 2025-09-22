@@ -28,7 +28,6 @@ public class OpenAIInstrumentationExample {
                             .model(ChatModel.GPT_4O_MINI)
                             .addSystemMessage("You are a helpful assistant")
                             .addUserMessage("What is the capital of France?")
-                            .maxTokens(50L)
                             .temperature(0.0)
                             .build();
             var response = openAIClient.chat().completions().create(request);
