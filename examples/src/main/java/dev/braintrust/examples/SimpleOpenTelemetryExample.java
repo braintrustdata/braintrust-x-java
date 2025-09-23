@@ -17,7 +17,12 @@ public class SimpleOpenTelemetryExample {
         } finally {
             span.end();
         }
-        var url = braintrustConfig.fetchProjectURI() + "/logs?r=%s&s=%s".formatted(span.getSpanContext().getSpanId(), span.getSpanContext().getSpanId());
+        var url =
+                braintrustConfig.fetchProjectURI()
+                        + "/logs?r=%s&s=%s"
+                                .formatted(
+                                        span.getSpanContext().getSpanId(),
+                                        span.getSpanContext().getSpanId());
         System.out.println("\n\n  Example complete! View your data in Braintrust: " + url);
     }
 }

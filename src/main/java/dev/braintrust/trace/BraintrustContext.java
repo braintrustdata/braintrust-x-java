@@ -3,9 +3,8 @@ package dev.braintrust.trace;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextKey;
-
-import javax.annotation.Nullable;
 import java.util.Optional;
+import javax.annotation.Nullable;
 
 /**
  * Context propagation for Braintrust-specific attributes. Uses OpenTelemetry's Context API for
@@ -39,7 +38,8 @@ public final class BraintrustContext {
 
     /** Creates a context for an experiment parent. */
     public static Context forExperiment(String experimentId, Span span) {
-        return Context.current().with(span)
+        return Context.current()
+                .with(span)
                 .with(KEY, new BraintrustContext(null, experimentId, "experiment"));
     }
 

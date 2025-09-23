@@ -11,20 +11,20 @@ import io.opentelemetry.api.common.AttributeKey;
 
 // copied from GenAiIncubatingAttributes
 final class GenAiAttributes {
-  static final AttributeKey<String> GEN_AI_PROVIDER_NAME = stringKey("gen_ai.provider.name");
+    static final AttributeKey<String> GEN_AI_PROVIDER_NAME = stringKey("gen_ai.provider.name");
 
-  static final class GenAiOperationNameIncubatingValues {
-    static final String CHAT = "chat";
-    static final String EMBEDDINGS = "embeddings";
+    static final class GenAiOperationNameIncubatingValues {
+        static final String CHAT = "chat";
+        static final String EMBEDDINGS = "embeddings";
 
-    private GenAiOperationNameIncubatingValues() {}
-  }
+        private GenAiOperationNameIncubatingValues() {}
+    }
 
-  static final class GenAiProviderNameIncubatingValues {
-    static final String OPENAI = "openai";
+    static final class GenAiProviderNameIncubatingValues {
+        static final String OPENAI = "openai";
 
-    private GenAiProviderNameIncubatingValues() {}
-  }
+        private GenAiProviderNameIncubatingValues() {}
+    }
 
-  private GenAiAttributes() {}
+    private GenAiAttributes() {}
 }

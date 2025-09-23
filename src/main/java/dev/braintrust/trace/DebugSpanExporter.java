@@ -4,7 +4,6 @@ import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
-
 import java.util.Collection;
 
 // TODO -- is this just for unit testing? Make package-private?

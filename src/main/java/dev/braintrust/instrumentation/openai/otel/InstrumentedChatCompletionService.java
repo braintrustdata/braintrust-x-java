@@ -18,125 +18,134 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import java.lang.reflect.Method;
 
 final class InstrumentedChatCompletionService
-    extends DelegatingInvocationHandler<ChatCompletionService, InstrumentedChatCompletionService> {
+        extends DelegatingInvocationHandler<
+                ChatCompletionService, InstrumentedChatCompletionService> {
 
-  private final Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter;
-  private final Logger eventLogger;
-  private final boolean captureMessageContent;
+    private final Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter;
+    private final Logger eventLogger;
+    private final boolean captureMessageContent;
 
-  InstrumentedChatCompletionService(
-      ChatCompletionService delegate,
-      Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter,
-      Logger eventLogger,
-      boolean captureMessageContent) {
-    super(delegate);
-    this.instrumenter = instrumenter;
-    this.eventLogger = eventLogger;
-    this.captureMessageContent = captureMessageContent;
-  }
+    InstrumentedChatCompletionService(
+            ChatCompletionService delegate,
+            Instrumenter<ChatCompletionCreateParams, ChatCompletion> instrumenter,
+            Logger eventLogger,
+            boolean captureMessageContent) {
+        super(delegate);
+        this.instrumenter = instrumenter;
+        this.eventLogger = eventLogger;
+        this.captureMessageContent = captureMessageContent;
+    }
 
-  @Override
-  protected Class<ChatCompletionService> getProxyType() {
-    return ChatCompletionService.class;
-  }
+    @Override
+    protected Class<ChatCompletionService> getProxyType() {
+        return ChatCompletionService.class;
+    }
 
-  @Override
-  public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    String methodName = method.getName();
-    Class<?>[] parameterTypes = method.getParameterTypes();
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        String methodName = method.getName();
+        Class<?>[] parameterTypes = method.getParameterTypes();
 
-    switch (methodName) {
-      case "create":
-        if (parameterTypes.length >= 1 && parameterTypes[0] == ChatCompletionCreateParams.class) {
-          if (parameterTypes.length == 1) {
-            return create((ChatCompletionCreateParams) args[0], RequestOptions.none());
-          } else if (parameterTypes.length == 2 && parameterTypes[1] == RequestOptions.class) {
-            return create((ChatCompletionCreateParams) args[0], (RequestOptions) args[1]);
-          }
+        switch (methodName) {
+            case "create":
+                if (parameterTypes.length >= 1
+                        && parameterTypes[0] == ChatCompletionCreateParams.class) {
+                    if (parameterTypes.length == 1) {
+                        return create((ChatCompletionCreateParams) args[0], RequestOptions.none());
+                    } else if (parameterTypes.length == 2
+                            && parameterTypes[1] == RequestOptions.class) {
+                        return create(
+                                (ChatCompletionCreateParams) args[0], (RequestOptions) args[1]);
+                    }
+                }
+                break;
+            case "createStreaming":
+                if (parameterTypes.length >= 1
+                        && parameterTypes[0] == ChatCompletionCreateParams.class) {
+                    if (parameterTypes.length == 1) {
+                        return createStreaming(
+                                (ChatCompletionCreateParams) args[0], RequestOptions.none());
+                    } else if (parameterTypes.length == 2
+                            && parameterTypes[1] == RequestOptions.class) {
+                        return createStreaming(
+                                (ChatCompletionCreateParams) args[0], (RequestOptions) args[1]);
+                    }
+                }
+                break;
+            default:
+                // fallthrough
         }
-        break;
-      case "createStreaming":
-        if (parameterTypes.length >= 1 && parameterTypes[0] == ChatCompletionCreateParams.class) {
-          if (parameterTypes.length == 1) {
-            return createStreaming((ChatCompletionCreateParams) args[0], RequestOptions.none());
-          } else if (parameterTypes.length == 2 && parameterTypes[1] == RequestOptions.class) {
-            return createStreaming((ChatCompletionCreateParams) args[0], (RequestOptions) args[1]);
-          }
+
+        return super.invoke(proxy, method, args);
+    }
+
+    private ChatCompletion create(
+            ChatCompletionCreateParams chatCompletionCreateParams, RequestOptions requestOptions) {
+        Context parentContext = Context.current();
+        if (!instrumenter.shouldStart(parentContext, chatCompletionCreateParams)) {
+            return createWithLogs(parentContext, chatCompletionCreateParams, requestOptions);
         }
-        break;
-      default:
-        // fallthrough
+
+        Context context = instrumenter.start(parentContext, chatCompletionCreateParams);
+        ChatCompletion completion;
+        try (Scope ignored = context.makeCurrent()) {
+            completion = createWithLogs(context, chatCompletionCreateParams, requestOptions);
+        } catch (Throwable t) {
+            instrumenter.end(context, chatCompletionCreateParams, null, t);
+            throw t;
+        }
+
+        instrumenter.end(context, chatCompletionCreateParams, completion, null);
+        return completion;
     }
 
-    return super.invoke(proxy, method, args);
-  }
-
-  private ChatCompletion create(
-      ChatCompletionCreateParams chatCompletionCreateParams, RequestOptions requestOptions) {
-    Context parentContext = Context.current();
-    if (!instrumenter.shouldStart(parentContext, chatCompletionCreateParams)) {
-      return createWithLogs(parentContext, chatCompletionCreateParams, requestOptions);
+    private ChatCompletion createWithLogs(
+            Context context,
+            ChatCompletionCreateParams chatCompletionCreateParams,
+            RequestOptions requestOptions) {
+        ChatCompletionEventsHelper.emitPromptLogEvents(
+                context, eventLogger, chatCompletionCreateParams, captureMessageContent);
+        ChatCompletion result = delegate.create(chatCompletionCreateParams, requestOptions);
+        ChatCompletionEventsHelper.emitCompletionLogEvents(
+                context, eventLogger, result, captureMessageContent);
+        return result;
     }
 
-    Context context = instrumenter.start(parentContext, chatCompletionCreateParams);
-    ChatCompletion completion;
-    try (Scope ignored = context.makeCurrent()) {
-      completion = createWithLogs(context, chatCompletionCreateParams, requestOptions);
-    } catch (Throwable t) {
-      instrumenter.end(context, chatCompletionCreateParams, null, t);
-      throw t;
+    private StreamResponse<ChatCompletionChunk> createStreaming(
+            ChatCompletionCreateParams chatCompletionCreateParams, RequestOptions requestOptions) {
+        Context parentContext = Context.current();
+        if (!instrumenter.shouldStart(parentContext, chatCompletionCreateParams)) {
+            return createStreamingWithLogs(
+                    parentContext, chatCompletionCreateParams, requestOptions, false);
+        }
+
+        Context context = instrumenter.start(parentContext, chatCompletionCreateParams);
+        try (Scope ignored = context.makeCurrent()) {
+            return createStreamingWithLogs(
+                    context, chatCompletionCreateParams, requestOptions, true);
+        } catch (Throwable t) {
+            instrumenter.end(context, chatCompletionCreateParams, null, t);
+            throw t;
+        }
     }
 
-    instrumenter.end(context, chatCompletionCreateParams, completion, null);
-    return completion;
-  }
-
-  private ChatCompletion createWithLogs(
-      Context context,
-      ChatCompletionCreateParams chatCompletionCreateParams,
-      RequestOptions requestOptions) {
-    ChatCompletionEventsHelper.emitPromptLogEvents(
-        context, eventLogger, chatCompletionCreateParams, captureMessageContent);
-    ChatCompletion result = delegate.create(chatCompletionCreateParams, requestOptions);
-    ChatCompletionEventsHelper.emitCompletionLogEvents(
-        context, eventLogger, result, captureMessageContent);
-    return result;
-  }
-
-  private StreamResponse<ChatCompletionChunk> createStreaming(
-      ChatCompletionCreateParams chatCompletionCreateParams, RequestOptions requestOptions) {
-    Context parentContext = Context.current();
-    if (!instrumenter.shouldStart(parentContext, chatCompletionCreateParams)) {
-      return createStreamingWithLogs(
-          parentContext, chatCompletionCreateParams, requestOptions, false);
+    private StreamResponse<ChatCompletionChunk> createStreamingWithLogs(
+            Context context,
+            ChatCompletionCreateParams chatCompletionCreateParams,
+            RequestOptions requestOptions,
+            boolean newSpan) {
+        ChatCompletionEventsHelper.emitPromptLogEvents(
+                context, eventLogger, chatCompletionCreateParams, captureMessageContent);
+        StreamResponse<ChatCompletionChunk> result =
+                delegate.createStreaming(chatCompletionCreateParams, requestOptions);
+        return new TracingStreamedResponse(
+                result,
+                new StreamListener(
+                        context,
+                        chatCompletionCreateParams,
+                        instrumenter,
+                        eventLogger,
+                        captureMessageContent,
+                        newSpan));
     }
-
-    Context context = instrumenter.start(parentContext, chatCompletionCreateParams);
-    try (Scope ignored = context.makeCurrent()) {
-      return createStreamingWithLogs(context, chatCompletionCreateParams, requestOptions, true);
-    } catch (Throwable t) {
-      instrumenter.end(context, chatCompletionCreateParams, null, t);
-      throw t;
-    }
-  }
-
-  private StreamResponse<ChatCompletionChunk> createStreamingWithLogs(
-      Context context,
-      ChatCompletionCreateParams chatCompletionCreateParams,
-      RequestOptions requestOptions,
-      boolean newSpan) {
-    ChatCompletionEventsHelper.emitPromptLogEvents(
-        context, eventLogger, chatCompletionCreateParams, captureMessageContent);
-    StreamResponse<ChatCompletionChunk> result =
-        delegate.createStreaming(chatCompletionCreateParams, requestOptions);
-    return new TracingStreamedResponse(
-        result,
-        new StreamListener(
-            context,
-            chatCompletionCreateParams,
-            instrumenter,
-            eventLogger,
-            captureMessageContent,
-            newSpan));
-  }
 }

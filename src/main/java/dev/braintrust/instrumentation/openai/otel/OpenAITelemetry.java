@@ -18,47 +18,56 @@ import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 /** Entrypoint for instrumenting OpenAI clients. */
 @SuppressWarnings("IdentifierName") // Want to match library's convention
 public final class OpenAITelemetry {
-  /** Returns a new {@link OpenAITelemetry} configured with the given {@link OpenTelemetry}. */
-  public static OpenAITelemetry create(OpenTelemetry openTelemetry) {
-    return builder(openTelemetry).build();
-  }
+    /** Returns a new {@link OpenAITelemetry} configured with the given {@link OpenTelemetry}. */
+    public static OpenAITelemetry create(OpenTelemetry openTelemetry) {
+        return builder(openTelemetry).build();
+    }
 
-  /**
-   * Returns a new {@link OpenAITelemetryBuilder} configured with the given {@link OpenTelemetry}.
-   */
-  public static OpenAITelemetryBuilder builder(OpenTelemetry openTelemetry) {
-    return new OpenAITelemetryBuilder(openTelemetry);
-  }
+    /**
+     * Returns a new {@link OpenAITelemetryBuilder} configured with the given {@link OpenTelemetry}.
+     */
+    public static OpenAITelemetryBuilder builder(OpenTelemetry openTelemetry) {
+        return new OpenAITelemetryBuilder(openTelemetry);
+    }
 
-  private final Instrumenter<ChatCompletionCreateParams, ChatCompletion> chatInstrumenter;
-  private final Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> embeddingsInstrumenter;
+    private final Instrumenter<ChatCompletionCreateParams, ChatCompletion> chatInstrumenter;
+    private final Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse>
+            embeddingsInstrumenter;
 
-  private final Logger eventLogger;
+    private final Logger eventLogger;
 
-  private final boolean captureMessageContent;
+    private final boolean captureMessageContent;
 
-  OpenAITelemetry(
-      Instrumenter<ChatCompletionCreateParams, ChatCompletion> chatInstrumenter,
-      Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> embeddingsInstrumenter,
-      Logger eventLogger,
-      boolean captureMessageContent) {
-    this.chatInstrumenter = chatInstrumenter;
-    this.embeddingsInstrumenter = embeddingsInstrumenter;
-    this.eventLogger = eventLogger;
-    this.captureMessageContent = captureMessageContent;
-  }
+    OpenAITelemetry(
+            Instrumenter<ChatCompletionCreateParams, ChatCompletion> chatInstrumenter,
+            Instrumenter<EmbeddingCreateParams, CreateEmbeddingResponse> embeddingsInstrumenter,
+            Logger eventLogger,
+            boolean captureMessageContent) {
+        this.chatInstrumenter = chatInstrumenter;
+        this.embeddingsInstrumenter = embeddingsInstrumenter;
+        this.eventLogger = eventLogger;
+        this.captureMessageContent = captureMessageContent;
+    }
 
-  /** Wraps the provided OpenAIClient, enabling telemetry for it. */
-  public OpenAIClient wrap(OpenAIClient client) {
-    return new InstrumentedOpenAiClient(
-            client, chatInstrumenter, embeddingsInstrumenter, eventLogger, captureMessageContent)
-        .createProxy();
-  }
+    /** Wraps the provided OpenAIClient, enabling telemetry for it. */
+    public OpenAIClient wrap(OpenAIClient client) {
+        return new InstrumentedOpenAiClient(
+                        client,
+                        chatInstrumenter,
+                        embeddingsInstrumenter,
+                        eventLogger,
+                        captureMessageContent)
+                .createProxy();
+    }
 
-  /** Wraps the provided OpenAIClientAsync, enabling telemetry for it. */
-  public OpenAIClientAsync wrap(OpenAIClientAsync client) {
-    return new InstrumentedOpenAiClientAsync(
-            client, chatInstrumenter, embeddingsInstrumenter, eventLogger, captureMessageContent)
-        .createProxy();
-  }
+    /** Wraps the provided OpenAIClientAsync, enabling telemetry for it. */
+    public OpenAIClientAsync wrap(OpenAIClientAsync client) {
+        return new InstrumentedOpenAiClientAsync(
+                        client,
+                        chatInstrumenter,
+                        embeddingsInstrumenter,
+                        eventLogger,
+                        captureMessageContent)
+                .createProxy();
+    }
 }

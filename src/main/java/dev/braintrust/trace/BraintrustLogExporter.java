@@ -6,7 +6,6 @@ import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.logs.data.LogRecordData;
 import io.opentelemetry.sdk.logs.export.LogRecordExporter;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -108,14 +107,16 @@ public class BraintrustLogExporter implements LogRecordExporter {
     @Override
     public CompletableResultCode flush() {
         // Flush all cached exporters
-        var results = exporterCache.values().stream().map(OtlpHttpLogRecordExporter::flush).toList();
+        var results =
+                exporterCache.values().stream().map(OtlpHttpLogRecordExporter::flush).toList();
         return CompletableResultCode.ofAll(results);
     }
 
     @Override
     public CompletableResultCode shutdown() {
         // Shutdown all cached exporters
-        var results = exporterCache.values().stream().map(OtlpHttpLogRecordExporter::shutdown).toList();
+        var results =
+                exporterCache.values().stream().map(OtlpHttpLogRecordExporter::shutdown).toList();
         exporterCache.clear();
         return CompletableResultCode.ofAll(results);
     }
