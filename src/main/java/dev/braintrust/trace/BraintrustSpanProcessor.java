@@ -72,7 +72,7 @@ public class BraintrustSpanProcessor implements SpanProcessor {
             // Check if parent context has Braintrust attributes first
             var btContext = BraintrustContext.fromContext(parentContext);
             if (btContext == null) {
-                // Use default project ID if configured
+                // Get parent from the config if otel doesn't have it
                 config.getBraintrustParentValue()
                         .ifPresent(
                                 parentValue -> {
@@ -83,7 +83,6 @@ public class BraintrustSpanProcessor implements SpanProcessor {
                                             span.getName());
                                 });
             } else {
-                // Can braintrust context have project_name instead?
                 btContext
                         .projectId()
                         .ifPresent(
