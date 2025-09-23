@@ -1,75 +1,78 @@
 plugins {
-    id 'java-library'
-    id 'maven-publish'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id 'com.diffplug.spotless' version '6.25.0'
+  id 'java-library'
+  id 'maven-publish'
+  id 'com.github.johnrengelman.shadow' version '8.1.1'
+  id 'com.diffplug.spotless' version '6.25.0'
+  id("io.freefair.lombok") version "9.0.0-rc2"
 }
 
 group = 'dev.braintrust'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-    withJavadocJar()
-    withSourcesJar()
+  sourceCompatibility = JavaVersion.VERSION_17
+  targetCompatibility = JavaVersion.VERSION_17
+  withJavadocJar()
+  withSourcesJar()
 }
 
 repositories {
-    mavenCentral()
+  mavenCentral()
 }
 
 ext {
-    otelVersion = '1.36.0'
-    jacksonVersion = '2.16.1'
-    junitVersion = '5.10.1'
-    assertjVersion = '3.25.1'
-    mockitoVersion = '5.8.0'
-    slf4jVersion = '2.0.9'
+  otelVersion = '1.36.0'
+  jacksonVersion = '2.16.1'
+  junitVersion = '5.10.1'
+  assertjVersion = '3.25.1'
+  mockitoVersion = '5.8.0'
+  slf4jVersion = '2.0.9'
 }
 
 dependencies {
-    // OpenTelemetry
-    api "io.opentelemetry:opentelemetry-api:${otelVersion}"
-    api "io.opentelemetry:opentelemetry-sdk:${otelVersion}"
-    api "io.opentelemetry:opentelemetry-sdk-trace:${otelVersion}"
-    api "io.opentelemetry:opentelemetry-sdk-logs:${otelVersion}"
-    implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
-    implementation "io.opentelemetry:opentelemetry-exporter-logging:${otelVersion}"
-    implementation "io.opentelemetry:opentelemetry-semconv:1.25.0-alpha"
+  // OpenTelemetry
+  api "io.opentelemetry:opentelemetry-api:${otelVersion}"
+  api "io.opentelemetry:opentelemetry-sdk:${otelVersion}"
+  api "io.opentelemetry:opentelemetry-sdk-trace:${otelVersion}"
+  api "io.opentelemetry:opentelemetry-sdk-logs:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-exporter-logging:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-semconv:1.25.0-alpha"
 
-    // HTTP Client (Java 11+)
-    implementation 'com.fasterxml.jackson.core:jackson-databind:' + jacksonVersion
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:' + jacksonVersion
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:' + jacksonVersion
+  // HTTP Client (Java 11+)
+  implementation 'com.fasterxml.jackson.core:jackson-databind:' + jacksonVersion
+  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:' + jacksonVersion
+  implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:' + jacksonVersion
 
-    // Logging
-    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
-    runtimeOnly "org.slf4j:slf4j-simple:${slf4jVersion}"
+  // Logging
+  implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+  runtimeOnly "org.slf4j:slf4j-simple:${slf4jVersion}"
 
-    // Utilities
-    implementation 'com.google.code.findbugs:jsr305:3.0.2' // @Nullable annotations
-    implementation 'org.apache.commons:commons-lang3:3.14.0'
+  // Utilities
+  implementation 'com.google.code.findbugs:jsr305:3.0.2' // @Nullable annotations
+  implementation 'org.apache.commons:commons-lang3:3.14.0'
 
-    // AI SDKs (optional dependencies)
-    compileOnly 'com.openai:openai-java:2.8.1' // Official OpenAI SDK
-    implementation "io.opentelemetry.instrumentation:opentelemetry-openai-java-1.1:2.19.0-alpha"
-    // compileOnly 'com.anthropic:anthropic-java:0.1.0' // Not yet available
+  // AI SDKs (optional dependencies)
+  compileOnly 'com.openai:openai-java:2.8.1' // Official OpenAI SDK
+  implementation "io.opentelemetry.instrumentation:opentelemetry-openai-java-1.1:2.19.0-alpha"
+  // compileOnly 'com.anthropic:anthropic-java:0.1.0' // Not yet available
 
-    // Testing
-    testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
-    testImplementation "org.assertj:assertj-core:${assertjVersion}"
-    testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
-    testImplementation "io.opentelemetry:opentelemetry-sdk-testing:${otelVersion}"
+  // Testing
+  testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+  testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
+  testImplementation "org.assertj:assertj-core:${assertjVersion}"
+  testImplementation "org.mockito:mockito-junit-jupiter:${mockitoVersion}"
+  testImplementation "io.opentelemetry:opentelemetry-sdk-testing:${otelVersion}"
 }
 
 test {
-    useJUnitPlatform()
-    testLogging {
-        events "passed", "skipped", "failed"
-        exceptionFormat "full"
-    }
+  useJUnitPlatform()
+  testLogging {
+    events "passed", "skipped", "failed"
+    exceptionFormat "full"
+  }
+  environment 'TEST_VAR1', 'fromenv1'
+  environment 'TEST_VAR2', 'fromenv2'
 }
 
 // Enable preview features for pattern matching, etc.
@@ -87,75 +90,75 @@ test {
 // }
 
 jar {
-    manifest {
-        attributes(
-            'Implementation-Title': 'Braintrust Java SDK',
-            'Implementation-Version': version,
-            'Implementation-Vendor': 'Braintrust'
-        )
-    }
+  manifest {
+    attributes(
+      'Implementation-Title': 'Braintrust Java SDK',
+      'Implementation-Version': version,
+      'Implementation-Vendor': 'Braintrust'
+    )
+  }
 }
 
 publishing {
-    publications {
-        maven(MavenPublication) {
-            from components.java
+  publications {
+    maven(MavenPublication) {
+      from components.java
 
-            pom {
-                name = 'Braintrust Java SDK'
-                description = 'OpenTelemetry-based Braintrust SDK for Java'
-                url = 'https://github.com/braintrustdata/braintrust-x-java'
+      pom {
+        name = 'Braintrust Java SDK'
+        description = 'OpenTelemetry-based Braintrust SDK for Java'
+        url = 'https://github.com/braintrustdata/braintrust-x-java'
 
-                licenses {
-                    license {
-                        name = 'MIT License'
-                        url = 'https://opensource.org/licenses/MIT'
-                    }
-                }
-
-                developers {
-                    developer {
-                        id = 'braintrust'
-                        name = 'Braintrust Team'
-                        email = 'support@braintrust.dev'
-                    }
-                }
-            }
+        licenses {
+          license {
+            name = 'MIT License'
+            url = 'https://opensource.org/licenses/MIT'
+          }
         }
+
+        developers {
+          developer {
+            id = 'braintrust'
+            name = 'Braintrust Team'
+            email = 'support@braintrust.dev'
+          }
+        }
+      }
     }
+  }
 }
 
 
 // Configure Spotless for code formatting
 spotless {
-    java {
-        target 'src/*/java/**/*.java', 'examples/src/*/java/**/*.java'
+  java {
+    target 'src/*/java/**/*.java', 'examples/src/*/java/**/*.java'
 
-        // Use Google Java Format
-        googleJavaFormat('1.19.2').aosp().reflowLongStrings()
+    // Use Google Java Format
+    googleJavaFormat('1.19.2').aosp().reflowLongStrings()
 
-        // Remove unused imports
-        removeUnusedImports()
+    // Remove unused imports
+    removeUnusedImports()
 
-        // Trim trailing whitespace
-        trimTrailingWhitespace()
+    // Trim trailing whitespace
+    trimTrailingWhitespace()
 
-        // End with newline
-        endWithNewline()
-    }
+    // End with newline
+    endWithNewline()
+  }
 }
 
 // Task to install git hooks
 task installGitHooks(type: Exec) {
-    description = 'Install git hooks for code formatting'
-    group = 'Build Setup'
-    commandLine 'bash', 'scripts/install-hooks.sh'
+  description = 'Install git hooks for code formatting'
+  group = 'Build Setup'
+  commandLine 'bash', 'scripts/install-hooks.sh'
 }
 
 // Run installGitHooks after project evaluation
 afterEvaluate {
-    // Install hooks when building for the first time
-    tasks.named('build').configure {
-        dependsOn installGitHooks
-    }
+  // Install hooks when building for the first time
+  tasks.named('build').configure {
+    dependsOn installGitHooks
+  }
 }
