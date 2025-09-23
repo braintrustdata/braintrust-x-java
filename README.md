@@ -2,6 +2,8 @@
 
 An OpenTelemetry-based Braintrust SDK for Java 17 and up. Contains instrumentation for major AI vendors (OpenAI, Anthropic, etc)
 
+If you're simply looking to call the Braintrust API with Java code, see [https://github.com/braintrustdata/braintrust-java](https://github.com/braintrustdata/braintrust-java)
+
 **WARNING (HERE BE DRAGONS):** *This is an experimental SDK for Braintrust. APIs are in active development and cannot be relied upon.*
 
 # Quickstart (Running examples and reporting data to Braintrust)
