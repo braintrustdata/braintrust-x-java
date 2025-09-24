@@ -63,10 +63,10 @@ public class CustomOpenTelemetryExample {
                         .build();
         GlobalOpenTelemetry.set(openTelemetry);
         registerShutdownHook(openTelemetry);
-        var braintrustTracer = BraintrustTracing.getTracer(openTelemetry);
+        var tracer = GlobalOpenTelemetry.getTracer("some-non-braintrust-instrumentation");
 
         // Now otel data will be exported to the local collector AND to braintrust
-        var span = braintrustTracer.spanBuilder("hello-java").startSpan();
+        var span = tracer.spanBuilder("hello-java").startSpan();
         try (var ignored = span.makeCurrent()) {
             System.out.println("Performing simple operation...");
             span.setAttribute("some boolean attribute", true);
