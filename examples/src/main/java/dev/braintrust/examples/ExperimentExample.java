@@ -14,7 +14,7 @@ import java.util.function.Function;
 public class ExperimentExample {
     public static void main(String[] args) throws Exception {
         var config = BraintrustConfig.fromEnvironment();
-        var openTelemetry = BraintrustTracing.quickstart(config, true);
+        var openTelemetry = BraintrustTracing.of(config, true);
         var openAIClient = BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());
 
         Function<String, String> getFoodType =

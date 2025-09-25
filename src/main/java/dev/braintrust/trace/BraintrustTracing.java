@@ -53,7 +53,7 @@ public final class BraintrustTracing {
      * `enable` method.
      */
     public static OpenTelemetry quickstart() {
-        return quickstart(BraintrustConfig.fromEnvironment(), true);
+        return of(BraintrustConfig.fromEnvironment(), true);
     }
 
     /**
@@ -62,8 +62,7 @@ public final class BraintrustTracing {
      * If you're looking for more options for configuring Braintrust and OpenTelemetry, consult the
      * `enable` method.
      */
-    public static OpenTelemetry quickstart(
-            @Nonnull BraintrustConfig config, boolean registerGlobal) {
+    public static OpenTelemetry of(@Nonnull BraintrustConfig config, boolean registerGlobal) {
         var tracerBuilder = SdkTracerProvider.builder();
         var loggerBuilder = SdkLoggerProvider.builder();
         var meterBuilder = SdkMeterProvider.builder();

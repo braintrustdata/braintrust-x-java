@@ -18,7 +18,8 @@ class BaseConfig {
 
     protected <T> @Nonnull T getConfig(@Nonnull String settingName, @Nonnull T defaultValue) {
         Objects.requireNonNull(defaultValue);
-        return getConfig(settingName, defaultValue, (Class<T>) defaultValue.getClass());
+        return Objects.requireNonNull(
+                getConfig(settingName, defaultValue, (Class<T>) defaultValue.getClass()));
     }
 
     protected <T> @Nullable T getConfig(

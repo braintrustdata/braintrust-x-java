@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * Custom log exporter for Braintrust that adds the x-bt-parent header dynamically based on log
  * attributes.
  */
-public class BraintrustLogExporter implements LogRecordExporter {
+class BraintrustLogExporter implements LogRecordExporter {
 
     private final BraintrustConfig config;
     private final String logsEndpoint;

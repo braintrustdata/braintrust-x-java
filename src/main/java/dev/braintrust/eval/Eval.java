@@ -35,7 +35,7 @@ public final class Eval<INPUT, OUTPUT> {
     private Eval(Builder<INPUT, OUTPUT> builder) {
         this.experimentName = builder.experimentName;
         this.config = Objects.requireNonNull(builder.config);
-        this.client = new BraintrustApiClient(config);
+        this.client = BraintrustApiClient.of(config);
         if (null == builder.projectId) {
             this.orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
         } else {

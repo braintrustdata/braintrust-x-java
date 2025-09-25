@@ -21,6 +21,7 @@ public final class BraintrustLogger {
 
     static {
         // BT logger will filter log levels so make the impl most permissive
+        // FIXME: Don't ship this -- we don't want to set common slf4j log properties
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "trace");
         // Initialize with default SLF4J implementation
         var defaultLogger = LoggerFactory.getLogger(LOGGER_NAME);

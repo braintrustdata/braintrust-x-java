@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * Custom span exporter for Braintrust that adds the x-bt-parent header dynamically based on span
  * attributes.
  */
-public class BraintrustSpanExporter implements SpanExporter {
+class BraintrustSpanExporter implements SpanExporter {
 
     private final BraintrustConfig config;
     private final String tracesEndpoint;
