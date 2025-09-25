@@ -3,6 +3,7 @@ package dev.braintrust.config;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Map;
+import javax.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 
 public class BaseConfigTest {
@@ -186,21 +187,25 @@ public class BaseConfigTest {
             super(envOverrides);
         }
 
+        @Nonnull
         @Override
-        public <T> T getConfig(String settingName, T defaultValue) {
+        public <T> T getConfig(@Nonnull String settingName, @Nonnull T defaultValue) {
             return super.getConfig(settingName, defaultValue);
         }
 
         @Override
-        public <T> T getConfig(String settingName, T defaultValue, Class<T> settingClass) {
+        public <T> T getConfig(
+                @Nonnull String settingName, T defaultValue, @Nonnull Class<T> settingClass) {
             return super.getConfig(settingName, defaultValue, settingClass);
         }
 
+        @Nonnull
         @Override
         public String getRequiredConfig(String settingName) {
             return super.getRequiredConfig(settingName);
         }
 
+        @Nonnull
         @Override
         public <T> T getRequiredConfig(String settingName, Class<T> settingClass) {
             return super.getRequiredConfig(settingName, settingClass);

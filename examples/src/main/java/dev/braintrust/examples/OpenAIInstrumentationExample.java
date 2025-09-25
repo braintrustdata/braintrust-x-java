@@ -16,7 +16,7 @@ public class OpenAIInstrumentationExample {
                     "\nWARNING envar OPEN_AI_API_KEY not found. This example will likely fail.\n");
         }
         var braintrustConfig = BraintrustConfig.fromEnvironment();
-        var openTelemetry = BraintrustTracing.quickstart(braintrustConfig, true);
+        var openTelemetry = BraintrustTracing.of(braintrustConfig, true);
         var tracer = BraintrustTracing.getTracer(openTelemetry);
         OpenAIClient openAIClient =
                 BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());

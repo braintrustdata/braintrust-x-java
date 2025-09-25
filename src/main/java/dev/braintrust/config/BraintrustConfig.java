@@ -80,7 +80,7 @@ public final class BraintrustConfig extends BaseConfig {
     /** fetch all project info and IDs from the braintrust api */
     public URI fetchProjectURI() {
         try {
-            var client = new BraintrustApiClient(this);
+            var client = BraintrustApiClient.of(this);
             var orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
             return new URI(
                     appUrl()

@@ -1,7 +1,6 @@
 package dev.braintrust.api;
 
-/** Exception thrown when API operations fail. */
-public class ApiException extends RuntimeException {
+class ApiException extends RuntimeException {
 
     public ApiException(String message) {
         super(message);
