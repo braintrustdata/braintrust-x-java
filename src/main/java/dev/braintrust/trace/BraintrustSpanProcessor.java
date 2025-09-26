@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.annotation.Nullable;
 import org.jetbrains.annotations.NotNull;
+import static dev.braintrust.SDKSpec.AttributeKeys.*;
 
 /**
  * Custom span processor that enriches spans with Braintrust-specific attributes. Supports parent
@@ -24,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 public class BraintrustSpanProcessor implements SpanProcessor {
 
     // Braintrust-specific attributes
-    public static final AttributeKey<String> PARENT = AttributeKey.stringKey("braintrust.parent");
+    public static final AttributeKey<String> PARENT = AttributeKey.stringKey(BRAINTRUST_PARENT);
 
     // Legacy attributes for backward compatibility (deprecated)
     @Deprecated

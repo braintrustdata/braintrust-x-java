@@ -1,5 +1,6 @@
 package dev.braintrust.config;
 
+import dev.braintrust.SDKSpec;
 import dev.braintrust.api.BraintrustApiClient;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -9,12 +10,16 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import static dev.braintrust.SDKSpec.Env.*;
 
 /** Configuration for Braintrust SDK */
 @Getter
 @Accessors(fluent = true)
 public final class BraintrustConfig extends BaseConfig {
-    private final String apiKey = getRequiredConfig("BRAINTRUST_API_KEY");
+    /**
+     * See {@link SDKSpec.Env#BRAINTRUST_API_KEY}
+     */
+    private final String apiKey = getRequiredConfig(BRAINTRUST_API_KEY);
     private final String apiUrl = getConfig("BRAINTRUST_API_URL", "https://api.braintrust.dev");
     private final String appUrl = getConfig("BRAINTRUST_APP_URL", "https://www.braintrust.dev");
     private final String tracesPath = getConfig("BRAINTRUST_TRACES_PATH", "/otel/v1/traces");
