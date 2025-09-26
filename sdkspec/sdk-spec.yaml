@@ -3,7 +3,7 @@ name: braintrust-sdk-spec
 
 envars:
   - name: BRAINTRUST_API_KEY
-    description: "Your Braintrust API key"
+    description: "Braintrust API key. You can find this in the Braintrust UI under user settings -> API keys"
     type: string
     required: true
     default: null
