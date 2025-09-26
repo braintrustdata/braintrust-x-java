@@ -6,6 +6,10 @@ def load_spec(path):
     # normalize for templates
     return {"spec": raw, "source_path": str(path)}
 
+def java_const(name):
+    """Convert a name to Java constant format (UPPER_CASE)"""
+    return name.upper().replace('-', '_').replace('.', '_')
+
 def render(env, tpl, ctx, out):
     text = env.get_template(tpl).render(**ctx)
     outp = pathlib.Path(out)
@@ -22,6 +26,7 @@ if __name__ == "__main__":
         trim_blocks=True, lstrip_blocks=True,
         undefined=StrictUndefined,
     )
+    env.globals['java_const'] = java_const
     ctx = load_spec(args.spec) | {
         "java_package": "com.braintrust.semconv"
     }
