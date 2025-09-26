@@ -1,0 +1,3 @@
+{%- macro java_const(name) -%}
+{{ name | upper | replace('-', '_') | replace('.', '_') }}
+{%- endmacro -%}
