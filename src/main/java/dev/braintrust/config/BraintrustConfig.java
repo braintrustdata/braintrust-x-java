@@ -79,15 +79,22 @@ public final class BraintrustConfig extends BaseConfig {
 
     /** fetch all project info and IDs from the braintrust api */
     public URI fetchProjectURI() {
+        return fetchProjectURI(BraintrustApiClient.of(this));
+    }
+
+    URI fetchProjectURI(BraintrustApiClient client) {
         try {
-            var client = BraintrustApiClient.of(this);
             var orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
+            var baseURI = new URI(appUrl());
             return new URI(
-                    appUrl()
+                    baseURI.getScheme(),
+                    baseURI.getHost(),
+                    baseURI.getPath()
                             + "/app/"
                             + orgAndProject.orgInfo().name()
                             + "/p/"
-                            + orgAndProject.project().name());
+                            + orgAndProject.project().name(),
+                    null);
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

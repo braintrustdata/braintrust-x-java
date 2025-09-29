@@ -224,6 +224,57 @@ public interface BraintrustApiClient {
         }
     }
 
+    /** Implementation for test doubling */
+    class InMemoryImpl implements BraintrustApiClient {
+        private final List<OrganizationAndProjectInfo> organizationAndProjectInfos;
+
+        public InMemoryImpl(OrganizationAndProjectInfo... organizationAndProjectInfos) {
+            this.organizationAndProjectInfos = List.of(organizationAndProjectInfos);
+        }
+
+        @Override
+        public Project getOrCreateProject(String projectName) {
+            // Find existing project by name
+            for (var orgAndProject : organizationAndProjectInfos) {
+                if (orgAndProject.project().name().equals(projectName)) {
+                    return orgAndProject.project();
+                }
+            }
+            throw new RuntimeException(
+                    "Project '"
+                            + projectName
+                            + "' not found in test data. Please add it to the InMemoryImpl"
+                            + " constructor.");
+        }
+
+        @Override
+        public Optional<Project> getProject(String projectId) {
+            return organizationAndProjectInfos.stream()
+                    .map(OrganizationAndProjectInfo::project)
+                    .filter(project -> project.id().equals(projectId))
+                    .findFirst();
+        }
+
+        @Override
+        public Experiment getOrCreateExperiment(CreateExperimentRequest request) {
+            throw new RuntimeException("not supported");
+        }
+
+        @Override
+        public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo() {
+            return organizationAndProjectInfos.isEmpty()
+                    ? Optional.empty()
+                    : Optional.of(organizationAndProjectInfos.get(0));
+        }
+
+        @Override
+        public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo(String projectId) {
+            return organizationAndProjectInfos.stream()
+                    .filter(orgAndProject -> orgAndProject.project().id().equals(projectId))
+                    .findFirst();
+        }
+    }
+
     // Request/Response DTOs
 
     record CreateProjectRequest(String name) {}
