@@ -48,9 +48,12 @@ class BraintrustConfigTest {
         var client = new dev.braintrust.api.BraintrustApiClient.InMemoryImpl(orgAndProjectInfo);
         var config =
                 BraintrustConfig.of(
-                        "BRAINTRUST_API_KEY", "foobar", "BRAINTRUST_DEFAULT_PROJECT_ID", projectId);
+                        "BRAINTRUST_API_KEY", "foobar",
+                        "BRAINTRUST_API_URL", "https://api.braintrust.dev",
+                        "BRAINTRUST_APP_URL", "https://braintrust.dev",
+                        "BRAINTRUST_DEFAULT_PROJECT_ID", projectId);
         assertEquals(
-                "https://www.braintrust.dev/app/Test%20Org/p/some%20project",
+                "https://braintrust.dev/app/Test%20Org/p/some%20project",
                 config.fetchProjectURI(client).toASCIIString());
     }
 }
