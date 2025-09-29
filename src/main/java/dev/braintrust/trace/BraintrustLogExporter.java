@@ -72,8 +72,11 @@ class BraintrustLogExporter implements LogRecordExporter {
     private CompletableResultCode exportWithParent(String parent, List<LogRecordData> logs) {
         try {
             // Get or create exporter for this parent
+            if (exporterCache.size() >= 1024) {
+                BraintrustLogger.info("Clearing exporter cache. This should not happen");
+                exporterCache.clear();
+            }
             var exporter =
-                    // FIXME: This will grow unbounded
                     exporterCache.computeIfAbsent(
                             parent,
                             p -> {

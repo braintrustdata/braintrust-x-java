@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
  * attributes.
  */
 class BraintrustSpanExporter implements SpanExporter {
+    /** Only used in unit tests. */
+    static final Object IN_MEMORY_SPAN_EXPORTER = null;
 
     private final BraintrustConfig config;
     private final String tracesEndpoint;
@@ -72,8 +74,11 @@ class BraintrustSpanExporter implements SpanExporter {
     private CompletableResultCode exportWithParent(String parent, List<SpanData> spans) {
         try {
             // Get or create exporter for this parent
+            if (exporterCache.size() >= 1024) {
+                BraintrustLogger.info("Clearing exporter cache. This should not happen");
+                exporterCache.clear();
+            }
             var exporter =
-                    // FIXME: This will grow unbounded
                     exporterCache.computeIfAbsent(
                             parent,
                             p -> {

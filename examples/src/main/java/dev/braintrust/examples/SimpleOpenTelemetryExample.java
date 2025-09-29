@@ -6,7 +6,7 @@ import dev.braintrust.trace.BraintrustTracing;
 public class SimpleOpenTelemetryExample {
     public static void main(String[] args) throws Exception {
         var braintrustConfig = BraintrustConfig.fromEnvironment();
-        var openTelemetry = BraintrustTracing.of(braintrustConfig, true);
+        var openTelemetry = BraintrustTracing.quickstart();
         var tracer = BraintrustTracing.getTracer(openTelemetry);
 
         var span = tracer.spanBuilder("hello-java").startSpan();
