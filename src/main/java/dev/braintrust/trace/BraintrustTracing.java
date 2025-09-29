@@ -32,20 +32,6 @@ public final class BraintrustTracing {
     private static final String INSTRUMENTATION_NAME = "braintrust-java";
     private static final String INSTRUMENTATION_VERSION = "0.0.1";
 
-    private BraintrustTracing() {
-        // Utility class
-    }
-
-    /** Gets a tracer with Braintrust instrumentation scope. */
-    public static Tracer getTracer() {
-        return getTracer(GlobalOpenTelemetry.get());
-    }
-
-    /** Gets a tracer from a specific OpenTelemetry instance. */
-    public static Tracer getTracer(OpenTelemetry openTelemetry) {
-        return openTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
-    }
-
     /**
      * Quick start method that sets up global OpenTelemetry with Braintrust defaults. <br>
      * <br>
@@ -163,4 +149,16 @@ public final class BraintrustTracing {
                                                             result.isDone(), result.isSuccess()));
                                 }));
     }
+
+    /** Gets a tracer with Braintrust instrumentation scope. */
+    public static Tracer getTracer() {
+        return getTracer(GlobalOpenTelemetry.get());
+    }
+
+    /** Gets a tracer from a specific OpenTelemetry instance. */
+    public static Tracer getTracer(OpenTelemetry openTelemetry) {
+        return openTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
+    }
+
+    private BraintrustTracing() {}
 }

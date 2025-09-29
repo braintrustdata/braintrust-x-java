@@ -1,38 +1,78 @@
 package dev.braintrust.trace;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import dev.braintrust.config.BraintrustConfig;
 import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class BraintrustTracingTest {
-    private final BraintrustConfig config = BraintrustConfig.of("BRAINTRUST_API_KEY", "foobar");
+    private final BraintrustConfig config =
+            BraintrustConfig.of(
+                    "BRAINTRUST_API_KEY", "foobar",
+                    "BRAINTRUST_TEST_JAVA_EXPORT_SPANS_IN_MEMORY", "true");
 
     @BeforeEach
-    void stuff() {
+    void beforeEach() {
         GlobalOpenTelemetry.resetForTest();
+        BraintrustSpanExporter.SPANS_EXPORTED.clear();
     }
 
     @Test
     void globalBTTracing() {
-        var tracing = BraintrustTracing.of(config, true);
-        // doSimpleOtelTrace with custom tracer
-        // force otel flush
-        // assert:
-        // - BT span exporter sees spans
+        var sdk = (OpenTelemetrySdk) BraintrustTracing.of(config, true);
+        doSimpleOtelTrace(BraintrustTracing.getTracer());
+        assertTrue(sdk.getSdkTracerProvider().forceFlush().join(10, TimeUnit.SECONDS).isSuccess());
+        assertEquals(1, BraintrustSpanExporter.SPANS_EXPORTED.size());
+        var spanData =
+                BraintrustSpanExporter.SPANS_EXPORTED.get(
+                        config.getBraintrustParentValue().orElseThrow());
+        assertNotNull(spanData);
+        assertEquals(1, spanData.size());
+        assertEquals(
+                true, spanData.get(0).getAttributes().get(AttributeKey.booleanKey("unit-test")));
     }
 
     @Test
     void customBTTracing() {
-        // hook up a custom otel with in-memory exporters
-        // doSimpleOtelTrace with custom tracer
-        // force otel flush
-        // assert:
-        // - in memory exporters receive
+        var tracerBuilder = SdkTracerProvider.builder();
+        var loggerBuilder = SdkLoggerProvider.builder();
+        var meterBuilder = SdkMeterProvider.builder();
+        BraintrustTracing.enable(config, tracerBuilder, loggerBuilder, meterBuilder);
+        var sdk =
+                OpenTelemetrySdk.builder()
+                        .setTracerProvider(tracerBuilder.build())
+                        .setLoggerProvider(loggerBuilder.build())
+                        .setMeterProvider(meterBuilder.build())
+                        .build();
+        GlobalOpenTelemetry.set(sdk);
+        doSimpleOtelTrace(sdk.getTracer("some-instrumentation"));
+        assertTrue(sdk.getSdkTracerProvider().forceFlush().join(10, TimeUnit.SECONDS).isSuccess());
+        assertEquals(1, BraintrustSpanExporter.SPANS_EXPORTED.size());
+        var spanData =
+                BraintrustSpanExporter.SPANS_EXPORTED.get(
+                        config.getBraintrustParentValue().orElseThrow());
+        assertNotNull(spanData);
+        assertEquals(1, spanData.size());
+        assertEquals(
+                true, spanData.get(0).getAttributes().get(AttributeKey.booleanKey("unit-test")));
     }
 
     private void doSimpleOtelTrace(Tracer tracer) {
         // use tracer to create a simple trace with a root span and a child span
+        var span = tracer.spanBuilder("unit-test-root").startSpan();
+        try (var ignored = span.makeCurrent()) {
+            span.setAttribute("unit-test", true);
+        } finally {
+            span.end();
+        }
     }
 }

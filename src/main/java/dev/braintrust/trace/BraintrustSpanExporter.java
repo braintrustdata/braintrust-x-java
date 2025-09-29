@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -18,7 +19,7 @@ import java.util.stream.Collectors;
  */
 class BraintrustSpanExporter implements SpanExporter {
     /** Only used in unit tests. */
-    static final Object IN_MEMORY_SPAN_EXPORTER = null;
+    static final Map<String, List<SpanData>> SPANS_EXPORTED = new ConcurrentHashMap<>();
 
     private final BraintrustConfig config;
     private final String tracesEndpoint;
@@ -102,6 +103,10 @@ class BraintrustSpanExporter implements SpanExporter {
 
             BraintrustLogger.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
             // Export the spans
+            if (config.unitTetJavaExportSpansInMemory()) {
+                SPANS_EXPORTED.putIfAbsent(parent, new CopyOnWriteArrayList<>());
+                SPANS_EXPORTED.get(parent).addAll(spans);
+            }
             return exporter.export(spans);
         } catch (Exception e) {
             BraintrustLogger.error("Failed to export spans", e);

@@ -85,8 +85,7 @@ public final class Eval<INPUT, OUTPUT> {
                         .setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, experimentId)
                         .setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment")
                         .startSpan();
-        try (var rootScope =
-                BraintrustContext.forExperiment(experimentId, rootSpan).makeCurrent()) {
+        try (var rootScope = BraintrustContext.of(experimentId, rootSpan).makeCurrent()) {
             final OUTPUT result;
             { // run task
                 var taskSpan =
@@ -96,8 +95,7 @@ public final class Eval<INPUT, OUTPUT> {
                                         "experiment_id:" + experimentId)
                                 .setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}")
                                 .startSpan();
-                try (var unused =
-                        BraintrustContext.forExperiment(experimentId, taskSpan).makeCurrent()) {
+                try (var unused = BraintrustContext.of(experimentId, taskSpan).makeCurrent()) {
                     result = task.apply(evalCase);
                 } finally {
                     taskSpan.end();
@@ -119,8 +117,7 @@ public final class Eval<INPUT, OUTPUT> {
                                         "experiment_id:" + experimentId)
                                 .setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}")
                                 .startSpan();
-                try (var unused =
-                        BraintrustContext.forExperiment(experimentId, scoreSpan).makeCurrent()) {
+                try (var unused = BraintrustContext.of(experimentId, scoreSpan).makeCurrent()) {
                     // NOTE: linked hash map to preserve ordering. Not in the spec but nice user
                     // experience
                     final HashMap<String, Double> nameToScore = new LinkedHashMap<>();
