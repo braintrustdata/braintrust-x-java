@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.log.BraintrustLogger;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -18,6 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import lombok.extern.slf4j.Slf4j;
 
 public interface BraintrustApiClient {
     /** Creates or gets a project by name. */
@@ -39,6 +39,7 @@ public interface BraintrustApiClient {
         return new HttpImpl(config);
     }
 
+    @Slf4j
     class HttpImpl implements BraintrustApiClient {
         private final BraintrustConfig config;
         private final HttpClient httpClient;
@@ -170,7 +171,7 @@ public interface BraintrustApiClient {
         }
 
         private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
-            BraintrustLogger.debug("API Request: {} {}", request.method(), request.uri());
+            log.debug("API Request: {} {}", request.method(), request.uri());
 
             return httpClient
                     .sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -178,17 +179,17 @@ public interface BraintrustApiClient {
         }
 
         private <T> T handleResponse(HttpResponse<String> response, Class<T> responseType) {
-            BraintrustLogger.debug("API Response: {} - {}", response.statusCode(), response.body());
+            log.debug("API Response: {} - {}", response.statusCode(), response.body());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 try {
                     return objectMapper.readValue(response.body(), responseType);
                 } catch (IOException e) {
-                    BraintrustLogger.warn("Failed to parse response body", e);
+                    log.warn("Failed to parse response body", e);
                     throw new ApiException("Failed to parse response body", e);
                 }
             } else {
-                BraintrustLogger.warn(
+                log.warn(
                         "API request failed with status {}: {}",
                         response.statusCode(),
                         response.body());
@@ -225,6 +226,7 @@ public interface BraintrustApiClient {
     }
 
     /** Implementation for test doubling */
+    @Slf4j
     class InMemoryImpl implements BraintrustApiClient {
         private final List<OrganizationAndProjectInfo> organizationAndProjectInfos;
         private final Set<Experiment> experiments =

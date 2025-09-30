@@ -12,6 +12,8 @@ repositories {
   mavenCentral()
 }
 
+def braintrustLogLevel = System.getenv('BRAINTRUST_LOG_LEVEL') ?: 'info'
+
 dependencies {
   implementation project(':')
   // TODO: not sure why I have to do this. I would have expected this to come over in the project root transitive deps
@@ -33,6 +35,7 @@ task runSimpleOpenTelemetry(type: JavaExec) {
   description = 'Run the simple OpenTelemetry example'
   classpath = sourceSets.main.runtimeClasspath
   mainClass = 'dev.braintrust.examples.SimpleOpenTelemetryExample'
+  systemProperty 'org.slf4j.simpleLogger.log.dev.braintrust', braintrustLogLevel
 }
 
 task runCustomOpenTelemetry(type: JavaExec) {
@@ -40,6 +43,7 @@ task runCustomOpenTelemetry(type: JavaExec) {
   description = 'Run the custom OpenTelemetry example'
   classpath = sourceSets.main.runtimeClasspath
   mainClass = 'dev.braintrust.examples.CustomOpenTelemetryExample'
+  systemProperty 'org.slf4j.simpleLogger.log.dev.braintrust', braintrustLogLevel
 }
 
 task runOpenAIInstrumentation(type: JavaExec) {
@@ -47,6 +51,7 @@ task runOpenAIInstrumentation(type: JavaExec) {
   description = 'Run the OpenAI instrumentation example. NOTE: this requires OPENAI_API_KEY to be exported and will make a small call to openai, using your tokens'
   classpath = sourceSets.main.runtimeClasspath
   mainClass = 'dev.braintrust.examples.OpenAIInstrumentationExample'
+  systemProperty 'org.slf4j.simpleLogger.log.dev.braintrust', braintrustLogLevel
   debugOptions {
     enabled = true
     port = 5566
@@ -60,6 +65,7 @@ task runExperiment(type: JavaExec) {
   description = 'Run the experiment example'
   classpath = sourceSets.main.runtimeClasspath
   mainClass = 'dev.braintrust.examples.ExperimentExample'
+  systemProperty 'org.slf4j.simpleLogger.log.dev.braintrust', braintrustLogLevel
   debugOptions {
     enabled = true
     port = 5566

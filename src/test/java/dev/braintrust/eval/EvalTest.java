@@ -31,7 +31,7 @@ public class EvalTest {
         var config =
                 BraintrustConfig.of(
                         "BRAINTRUST_API_KEY", "foobar",
-                        "BRAINTRUST_TEST_JAVA_EXPORT_SPANS_IN_MEMORY", "true",
+                        "BRAINTRUST_JAVA_EXPORT_SPANS_IN_MEMORY_FOR_UNIT_TEST", "true",
                         "BRAINTRUST_API_URL", "https://api.braintrust.dev",
                         "BRAINTRUST_APP_URL", "https://braintrust.dev",
                         "BRAINTRUST_DEFAULT_PROJECT_NAME", projectName);
