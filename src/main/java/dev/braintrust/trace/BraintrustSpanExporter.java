@@ -1,7 +1,6 @@
 package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporter;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.trace.data.SpanData;
@@ -12,11 +11,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Custom span exporter for Braintrust that adds the x-bt-parent header dynamically based on span
  * attributes.
  */
+@Slf4j
 class BraintrustSpanExporter implements SpanExporter {
     /** Only used in unit tests. */
     static final Map<String, List<SpanData>> SPANS_EXPORTED = new ConcurrentHashMap<>();
@@ -63,7 +64,7 @@ class BraintrustSpanExporter implements SpanExporter {
         try {
             // Get or create exporter for this parent
             if (exporterCache.size() >= 1024) {
-                BraintrustLogger.get().info("Clearing exporter cache. This should not happen");
+                log.info("Clearing exporter cache. This should not happen");
                 exporterCache.clear();
             }
             var exporter =
@@ -81,15 +82,13 @@ class BraintrustSpanExporter implements SpanExporter {
                                 // Add x-bt-parent header if we have a parent
                                 if (!p.isEmpty()) {
                                     exporterBuilder.addHeader("x-bt-parent", p);
-                                    BraintrustLogger.get()
-                                            .debug("Created exporter with x-bt-parent: {}", p);
+                                    log.debug("Created exporter with x-bt-parent: {}", p);
                                 }
 
                                 return exporterBuilder.build();
                             });
 
-            BraintrustLogger.get()
-                    .debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
+            log.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
             if (config.exportSpansInMemoryForUnitTest()) {
                 SPANS_EXPORTED.putIfAbsent(parent, new CopyOnWriteArrayList<>());
                 SPANS_EXPORTED.get(parent).addAll(spans);
@@ -98,7 +97,7 @@ class BraintrustSpanExporter implements SpanExporter {
                 return exporter.export(spans);
             }
         } catch (Exception e) {
-            BraintrustLogger.get().error("Failed to export spans", e);
+            log.error("Failed to export spans", e);
             return CompletableResultCode.ofFailure();
         }
     }

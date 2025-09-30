@@ -1,7 +1,6 @@
 package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.spec.SdkSpec;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.context.Context;
@@ -13,12 +12,14 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import javax.annotation.Nullable;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * Custom span processor that enriches spans with Braintrust-specific attributes. Supports parent
  * assignment to projects or experiments.
  */
+@Slf4j
 class BraintrustSpanProcessor implements SpanProcessor {
 
     // Braintrust-specific attributes
@@ -36,7 +37,7 @@ class BraintrustSpanProcessor implements SpanProcessor {
 
     @Override
     public void onStart(@NotNull Context parentContext, ReadWriteSpan span) {
-        BraintrustLogger.get().debug("OnStart: span={}, parent={}", span.getName(), parentContext);
+        log.debug("OnStart: span={}, parent={}", span.getName(), parentContext);
 
         // Check if span already has a parent attribute
         if (span.getAttribute(PARENT) == null) {
@@ -48,11 +49,10 @@ class BraintrustSpanProcessor implements SpanProcessor {
                         .ifPresent(
                                 parentValue -> {
                                     span.setAttribute(PARENT, parentValue);
-                                    BraintrustLogger.get()
-                                            .debug(
-                                                    "OnStart: set parent {} for span {}",
-                                                    parentValue,
-                                                    span.getName());
+                                    log.debug(
+                                            "OnStart: set parent {} for span {}",
+                                            parentValue,
+                                            span.getName());
                                 });
             } else {
                 btContext
@@ -60,21 +60,14 @@ class BraintrustSpanProcessor implements SpanProcessor {
                         .ifPresent(
                                 id -> {
                                     span.setAttribute(PARENT, "project_id:" + id);
-                                    BraintrustLogger.get()
-                                            .debug(
-                                                    "OnStart: set parent project {} from context",
-                                                    id);
+                                    log.debug("OnStart: set parent project {} from context", id);
                                 });
                 btContext
                         .experimentId()
                         .ifPresent(
                                 id -> {
                                     span.setAttribute(PARENT, "experiment_id:" + id);
-                                    BraintrustLogger.get()
-                                            .debug(
-                                                    "OnStart: set parent experiment {} from"
-                                                            + " context",
-                                                    id);
+                                    log.debug("OnStart: set parent experiment {} from context", id);
                                 });
             }
         }
@@ -122,16 +115,15 @@ class BraintrustSpanProcessor implements SpanProcessor {
 
     private void logSpanDetails(ReadableSpan span) {
         var spanData = span.toSpanData();
-        BraintrustLogger.get()
-                .debug(
-                        "Span completed: name={}, traceId={}, spanId={}, duration={}ms,"
-                                + " attributes={}, events={}",
-                        spanData.getName(),
-                        spanData.getTraceId(),
-                        spanData.getSpanId(),
-                        (spanData.getEndEpochNanos() - spanData.getStartEpochNanos()) / 1_000_000,
-                        spanData.getAttributes(),
-                        spanData.getEvents());
+        log.debug(
+                "Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={},"
+                        + " events={}",
+                spanData.getName(),
+                spanData.getTraceId(),
+                spanData.getSpanId(),
+                (spanData.getEndEpochNanos() - spanData.getStartEpochNanos()) / 1_000_000,
+                spanData.getAttributes(),
+                spanData.getEvents());
     }
 
     /** Parent context for spans (project or experiment). */

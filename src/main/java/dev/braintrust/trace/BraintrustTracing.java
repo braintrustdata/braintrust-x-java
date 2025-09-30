@@ -1,7 +1,6 @@
 package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Tracer;
@@ -23,11 +22,13 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Main entry point for Braintrust tracing setup. Provides convenient methods to initialize
  * OpenTelemetry with Braintrust configuration.
  */
+@Slf4j
 public final class BraintrustTracing {
     private static final String INSTRUMENTATION_NAME = "braintrust-java";
     private static final String INSTRUMENTATION_VERSION = "0.0.1";
@@ -61,7 +62,7 @@ public final class BraintrustTracing {
                         .build();
         if (registerGlobal) {
             GlobalOpenTelemetry.set(openTelemetry);
-            BraintrustLogger.get().debug("Registered OpenTelemetry globally");
+            log.debug("Registered OpenTelemetry globally");
         }
         return openTelemetry;
     }
@@ -90,8 +91,7 @@ public final class BraintrustTracing {
         final Duration exportInterval = Duration.ofSeconds(5);
         final int maxQueueSize = 2048;
         final int maxExportBatchSize = 512;
-        BraintrustLogger.get()
-                .info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
+        log.info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
 
         // Create resource first so BraintrustSpanProcessor can access service.name
         var resourceBuilder =
@@ -128,8 +128,7 @@ public final class BraintrustTracing {
                 .addShutdownHook(
                         new Thread(
                                 () -> {
-                                    BraintrustLogger.get()
-                                            .debug("Shutting down. Force-Flushing all otel data.");
+                                    log.debug("Shutting down. Force-Flushing all otel data.");
                                     var result =
                                             CompletableResultCode.ofAll(
                                                     // run all flushes in parallel. Should (rarely)
@@ -144,12 +143,10 @@ public final class BraintrustTracing {
                                                                                     TimeUnit
                                                                                             .SECONDS))
                                                             .toList());
-                                    BraintrustLogger.get()
-                                            .debug(
-                                                    "otel shutdown complete. Flush done: %s, Flush successful: %s"
-                                                            .formatted(
-                                                                    result.isDone(),
-                                                                    result.isSuccess()));
+                                    log.debug(
+                                            "otel shutdown complete. Flush done: %s, Flush successful: %s"
+                                                    .formatted(
+                                                            result.isDone(), result.isSuccess()));
                                 }));
     }
 

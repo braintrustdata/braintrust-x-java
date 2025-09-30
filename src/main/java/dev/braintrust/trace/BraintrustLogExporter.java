@@ -1,7 +1,6 @@
 package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.log.BraintrustLogger;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
 import io.opentelemetry.sdk.common.CompletableResultCode;
 import io.opentelemetry.sdk.logs.data.LogRecordData;
@@ -11,11 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Custom log exporter for Braintrust that adds the x-bt-parent header dynamically based on log
  * attributes.
  */
+@Slf4j
 class BraintrustLogExporter implements LogRecordExporter {
 
     private final BraintrustConfig config;
@@ -60,7 +61,7 @@ class BraintrustLogExporter implements LogRecordExporter {
         try {
             // Get or create exporter for this parent
             if (exporterCache.size() >= 1024) {
-                BraintrustLogger.get().info("Clearing exporter cache. This should not happen");
+                log.info("Clearing exporter cache. This should not happen");
                 exporterCache.clear();
             }
             var exporter =
@@ -78,19 +79,17 @@ class BraintrustLogExporter implements LogRecordExporter {
                                 // Add x-bt-parent header if we have a parent
                                 if (!p.isEmpty()) {
                                     exporterBuilder.addHeader("x-bt-parent", p);
-                                    BraintrustLogger.get()
-                                            .debug("Created log exporter with x-bt-parent: {}", p);
+                                    log.debug("Created log exporter with x-bt-parent: {}", p);
                                 }
 
                                 return exporterBuilder.build();
                             });
 
-            BraintrustLogger.get()
-                    .debug("Exporting {} logs with x-bt-parent: {}", logs.size(), parent);
+            log.debug("Exporting {} logs with x-bt-parent: {}", logs.size(), parent);
             // Export the logs
             return exporter.export(logs);
         } catch (Exception e) {
-            BraintrustLogger.get().error("Failed to export logs", e);
+            log.error("Failed to export logs", e);
             return CompletableResultCode.ofFailure();
         }
     }
