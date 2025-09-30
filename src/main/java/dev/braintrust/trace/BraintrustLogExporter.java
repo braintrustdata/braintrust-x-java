@@ -49,31 +49,21 @@ class BraintrustLogExporter implements LogRecordExporter {
     }
 
     private String getParentFromLog(LogRecordData log) {
-        // Check for the braintrust.parent attribute
         var parent = log.getAttributes().get(BraintrustSpanProcessor.PARENT);
         if (parent != null) {
             return parent;
         }
-
-        // Check legacy attributes for backward compatibility
-        var experimentId = log.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID);
-        if (experimentId != null) {
-            return "experiment_id:" + experimentId;
-        }
-
-        var projectId = log.getAttributes().get(BraintrustSpanProcessor.PARENT_PROJECT_ID);
-        if (projectId != null) {
-            return "project_id:" + projectId;
-        }
-
         return config.getBraintrustParentValue().orElse("");
     }
 
     private CompletableResultCode exportWithParent(String parent, List<LogRecordData> logs) {
         try {
             // Get or create exporter for this parent
+            if (exporterCache.size() >= 1024) {
+                BraintrustLogger.info("Clearing exporter cache. This should not happen");
+                exporterCache.clear();
+            }
             var exporter =
-                    // FIXME: This will grow unbounded
                     exporterCache.computeIfAbsent(
                             parent,
                             p -> {

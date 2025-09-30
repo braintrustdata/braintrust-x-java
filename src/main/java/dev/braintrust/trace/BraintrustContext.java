@@ -3,49 +3,32 @@ package dev.braintrust.trace;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextKey;
+import java.util.Objects;
 import java.util.Optional;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 /**
- * Context propagation for Braintrust-specific attributes. Uses OpenTelemetry's Context API for
- * thread-safe propagation.
+ * Used to identify the braintrust parent for spans and experiments. SDK users probably don't want
+ * to use this and instead should use {@link BraintrustTracing} or {@link dev.braintrust.eval.Eval}
  */
 public final class BraintrustContext {
     private static final ContextKey<BraintrustContext> KEY = ContextKey.named("braintrust-context");
 
+    // NOTE we're actually not using this right now, but leaving in for the future
     @Nullable private final String projectId;
     @Nullable private final String experimentId;
-    @Nullable private final String parentType;
 
-    private BraintrustContext(
-            @Nullable String projectId,
-            @Nullable String experimentId,
-            @Nullable String parentType) {
+    private BraintrustContext(@Nullable String projectId, @Nullable String experimentId) {
         this.projectId = projectId;
         this.experimentId = experimentId;
-        this.parentType = parentType;
-    }
-
-    /** Creates a context for a project parent. */
-    public static BraintrustContext forProject(String projectId) {
-        return new BraintrustContext(projectId, null, "project");
     }
 
     /** Creates a context for an experiment parent. */
-    public static BraintrustContext forExperiment(String experimentId) {
-        return new BraintrustContext(null, experimentId, "experiment");
-    }
-
-    /** Creates a context for an experiment parent. */
-    public static Context forExperiment(String experimentId, Span span) {
-        return Context.current()
-                .with(span)
-                .with(KEY, new BraintrustContext(null, experimentId, "experiment"));
-    }
-
-    /** Stores this context in the given Context. */
-    public Context storeInContext(Context context) {
-        return context.with(KEY, this);
+    public static Context ofExperiment(@Nonnull String experimentId, @Nonnull Span span) {
+        Objects.requireNonNull(experimentId);
+        Objects.requireNonNull(span);
+        return Context.current().with(span).with(KEY, new BraintrustContext(null, experimentId));
     }
 
     /** Retrieves a BraintrustContext from the given Context. */
@@ -54,62 +37,11 @@ public final class BraintrustContext {
         return context.get(KEY);
     }
 
-    /** Returns the current BraintrustContext from the current Context. */
-    @Nullable
-    public static BraintrustContext current() {
-        return fromContext(Context.current());
-    }
-
     public Optional<String> projectId() {
         return Optional.ofNullable(projectId);
     }
 
     public Optional<String> experimentId() {
         return Optional.ofNullable(experimentId);
-    }
-
-    public Optional<String> parentType() {
-        return Optional.ofNullable(parentType);
-    }
-
-    /** Builder for creating contexts with multiple attributes. */
-    public static final class Builder {
-        private String projectId;
-        private String experimentId;
-        private String parentType;
-
-        public Builder projectId(String projectId) {
-            this.projectId = projectId;
-            this.experimentId = null; // Clear experiment when setting project
-            if (projectId != null) {
-                this.parentType = "project";
-            }
-            return this;
-        }
-
-        public Builder experimentId(String experimentId) {
-            this.experimentId = experimentId;
-            this.projectId = null; // Clear project when setting experiment
-            if (experimentId != null) {
-                this.parentType = "experiment";
-            }
-            return this;
-        }
-
-        public BraintrustContext build() {
-            return new BraintrustContext(projectId, experimentId, parentType);
-        }
-
-        public Context storeInContext(Context context) {
-            return build().storeInContext(context);
-        }
-
-        public Context storeInCurrent() {
-            return storeInContext(Context.current());
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 }

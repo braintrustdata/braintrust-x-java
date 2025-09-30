@@ -13,10 +13,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 public interface BraintrustApiClient {
@@ -221,6 +221,71 @@ public interface BraintrustApiClient {
                             com.fasterxml.jackson.databind.DeserializationFeature
                                     .FAIL_ON_UNKNOWN_PROPERTIES,
                             false); // Ignore unknown fields from API
+        }
+    }
+
+    /** Implementation for test doubling */
+    class InMemoryImpl implements BraintrustApiClient {
+        private final List<OrganizationAndProjectInfo> organizationAndProjectInfos;
+        private final Set<Experiment> experiments =
+                Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        public InMemoryImpl(OrganizationAndProjectInfo... organizationAndProjectInfos) {
+            this.organizationAndProjectInfos = List.of(organizationAndProjectInfos);
+        }
+
+        @Override
+        public Project getOrCreateProject(String projectName) {
+            // Find existing project by name
+            for (var orgAndProject : organizationAndProjectInfos) {
+                if (orgAndProject.project().name().equals(projectName)) {
+                    return orgAndProject.project();
+                }
+            }
+            throw new RuntimeException(
+                    "Project '"
+                            + projectName
+                            + "' not found in test data. Please add it to the InMemoryImpl"
+                            + " constructor.");
+        }
+
+        @Override
+        public Optional<Project> getProject(String projectId) {
+            return organizationAndProjectInfos.stream()
+                    .map(OrganizationAndProjectInfo::project)
+                    .filter(project -> project.id().equals(projectId))
+                    .findFirst();
+        }
+
+        @Override
+        public Experiment getOrCreateExperiment(CreateExperimentRequest request) {
+            var existing =
+                    experiments.stream()
+                            .filter(exp -> exp.name().equals(request.name()))
+                            .findFirst();
+            return existing.orElseGet(
+                    () ->
+                            new Experiment(
+                                    request.name().hashCode() + "",
+                                    request.projectId(),
+                                    request.name(),
+                                    request.description(),
+                                    "notused",
+                                    "notused"));
+        }
+
+        @Override
+        public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo() {
+            return organizationAndProjectInfos.isEmpty()
+                    ? Optional.empty()
+                    : Optional.of(organizationAndProjectInfos.get(0));
+        }
+
+        @Override
+        public Optional<OrganizationAndProjectInfo> getProjectAndOrgInfo(String projectId) {
+            return organizationAndProjectInfos.stream()
+                    .filter(orgAndProject -> orgAndProject.project().id().equals(projectId))
+                    .findFirst();
         }
     }
 

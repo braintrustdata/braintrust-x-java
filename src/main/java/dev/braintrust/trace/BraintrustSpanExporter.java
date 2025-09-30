@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 /**
@@ -17,6 +18,8 @@ import java.util.stream.Collectors;
  * attributes.
  */
 class BraintrustSpanExporter implements SpanExporter {
+    /** Only used in unit tests. */
+    static final Map<String, List<SpanData>> SPANS_EXPORTED = new ConcurrentHashMap<>();
 
     private final BraintrustConfig config;
     private final String tracesEndpoint;
@@ -49,31 +52,21 @@ class BraintrustSpanExporter implements SpanExporter {
     }
 
     private String getParentFromSpan(SpanData span) {
-        // Check for the braintrust.parent attribute
         var parent = span.getAttributes().get(BraintrustSpanProcessor.PARENT);
         if (parent != null) {
             return parent;
         }
-
-        // Check legacy attributes for backward compatibility
-        var experimentId = span.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID);
-        if (experimentId != null) {
-            return "experiment_id:" + experimentId;
-        }
-
-        var projectId = span.getAttributes().get(BraintrustSpanProcessor.PARENT_PROJECT_ID);
-        if (projectId != null) {
-            return "project_id:" + projectId;
-        }
-
         return config.getBraintrustParentValue().orElse("");
     }
 
     private CompletableResultCode exportWithParent(String parent, List<SpanData> spans) {
         try {
             // Get or create exporter for this parent
+            if (exporterCache.size() >= 1024) {
+                BraintrustLogger.info("Clearing exporter cache. This should not happen");
+                exporterCache.clear();
+            }
             var exporter =
-                    // FIXME: This will grow unbounded
                     exporterCache.computeIfAbsent(
                             parent,
                             p -> {
@@ -96,8 +89,13 @@ class BraintrustSpanExporter implements SpanExporter {
                             });
 
             BraintrustLogger.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
-            // Export the spans
-            return exporter.export(spans);
+            if (config.unitTetJavaExportSpansInMemory()) {
+                SPANS_EXPORTED.putIfAbsent(parent, new CopyOnWriteArrayList<>());
+                SPANS_EXPORTED.get(parent).addAll(spans);
+                return CompletableResultCode.ofSuccess();
+            } else {
+                return exporter.export(spans);
+            }
         } catch (Exception e) {
             BraintrustLogger.error("Failed to export spans", e);
             return CompletableResultCode.ofFailure();

@@ -2,6 +2,7 @@ package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.log.BraintrustLogger;
+import dev.braintrust.spec.SdkSpec;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -21,23 +22,11 @@ import org.jetbrains.annotations.NotNull;
  * Custom span processor that enriches spans with Braintrust-specific attributes. Supports parent
  * assignment to projects or experiments.
  */
-public class BraintrustSpanProcessor implements SpanProcessor {
+class BraintrustSpanProcessor implements SpanProcessor {
 
     // Braintrust-specific attributes
-    public static final AttributeKey<String> PARENT = AttributeKey.stringKey("braintrust.parent");
-
-    // Legacy attributes for backward compatibility (deprecated)
-    @Deprecated
-    public static final AttributeKey<String> PARENT_PROJECT_ID =
-            AttributeKey.stringKey("braintrust.parent.project_id");
-
-    @Deprecated
-    public static final AttributeKey<String> PARENT_EXPERIMENT_ID =
-            AttributeKey.stringKey("braintrust.parent.experiment_id");
-
-    @Deprecated
-    public static final AttributeKey<String> PARENT_TYPE =
-            AttributeKey.stringKey("braintrust.parent.type");
+    public static final AttributeKey<String> PARENT =
+            AttributeKey.stringKey(SdkSpec.Attributes.PARENT);
 
     // Usage metrics
     public static final AttributeKey<Long> USAGE_PROMPT_TOKENS =
