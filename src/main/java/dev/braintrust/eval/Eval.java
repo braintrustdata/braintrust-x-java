@@ -4,9 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.braintrust.api.BraintrustApiClient;
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.spec.SdkSpec;
 import dev.braintrust.trace.BraintrustContext;
-import dev.braintrust.trace.BraintrustSpanProcessor;
 import dev.braintrust.trace.BraintrustTracing;
+import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import java.util.*;
@@ -21,6 +22,8 @@ import javax.annotation.Nullable;
  * @param <OUTPUT> The type of output produced by the task
  */
 public final class Eval<INPUT, OUTPUT> {
+    private static final AttributeKey<String> PARENT =
+            AttributeKey.stringKey(SdkSpec.Attributes.PARENT);
     private static final ObjectMapper JSON_MAPPER =
             new com.fasterxml.jackson.databind.ObjectMapper();
     private final @Nonnull String experimentName;
@@ -73,29 +76,24 @@ public final class Eval<INPUT, OUTPUT> {
                 tracer.spanBuilder("eval") // TODO: allow names for eval cases
                         .setNoParent() // each eval case is its own trace
                         .setSpanKind(SpanKind.CLIENT)
-                        .setAttribute(
-                                BraintrustSpanProcessor.PARENT, "experiment_id:" + experimentId)
+                        .setAttribute(PARENT, "experiment_id:" + experimentId)
                         .setAttribute("braintrust.span_attributes", "{\"type\":\"eval\"}")
                         // FIXME: use proper object mapper for json stuff
                         .setAttribute(
                                 "braintrust.input_json",
                                 "{ \"input\":\"" + evalCase.input() + "\"}")
                         .setAttribute("braintrust.expected", "\"" + evalCase.expected() + "\"")
-                        // TODO: these attributes are deprecated apparently? Do we need to set them?
-                        .setAttribute(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID, experimentId)
-                        .setAttribute(BraintrustSpanProcessor.PARENT_TYPE, "experiment")
                         .startSpan();
-        try (var rootScope = BraintrustContext.of(experimentId, rootSpan).makeCurrent()) {
+        try (var rootScope = BraintrustContext.ofExperiment(experimentId, rootSpan).makeCurrent()) {
             final OUTPUT result;
             { // run task
                 var taskSpan =
                         tracer.spanBuilder("task")
-                                .setAttribute(
-                                        BraintrustSpanProcessor.PARENT,
-                                        "experiment_id:" + experimentId)
+                                .setAttribute(PARENT, "experiment_id:" + experimentId)
                                 .setAttribute("braintrust.span_attributes", "{\"type\":\"task\"}")
                                 .startSpan();
-                try (var unused = BraintrustContext.of(experimentId, taskSpan).makeCurrent()) {
+                try (var unused =
+                        BraintrustContext.ofExperiment(experimentId, taskSpan).makeCurrent()) {
                     result = task.apply(evalCase);
                 } finally {
                     taskSpan.end();
@@ -112,12 +110,11 @@ public final class Eval<INPUT, OUTPUT> {
             { // run scorers
                 var scoreSpan =
                         tracer.spanBuilder("score")
-                                .setAttribute(
-                                        BraintrustSpanProcessor.PARENT,
-                                        "experiment_id:" + experimentId)
+                                .setAttribute(PARENT, "experiment_id:" + experimentId)
                                 .setAttribute("braintrust.span_attributes", "{\"type\":\"score\"}")
                                 .startSpan();
-                try (var unused = BraintrustContext.of(experimentId, scoreSpan).makeCurrent()) {
+                try (var unused =
+                        BraintrustContext.ofExperiment(experimentId, scoreSpan).makeCurrent()) {
                     // NOTE: linked hash map to preserve ordering. Not in the spec but nice user
                     // experience
                     final HashMap<String, Double> nameToScore = new LinkedHashMap<>();

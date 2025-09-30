@@ -52,23 +52,10 @@ class BraintrustSpanExporter implements SpanExporter {
     }
 
     private String getParentFromSpan(SpanData span) {
-        // Check for the braintrust.parent attribute
         var parent = span.getAttributes().get(BraintrustSpanProcessor.PARENT);
         if (parent != null) {
             return parent;
         }
-
-        // Check legacy attributes for backward compatibility
-        var experimentId = span.getAttributes().get(BraintrustSpanProcessor.PARENT_EXPERIMENT_ID);
-        if (experimentId != null) {
-            return "experiment_id:" + experimentId;
-        }
-
-        var projectId = span.getAttributes().get(BraintrustSpanProcessor.PARENT_PROJECT_ID);
-        if (projectId != null) {
-            return "project_id:" + projectId;
-        }
-
         return config.getBraintrustParentValue().orElse("");
     }
 

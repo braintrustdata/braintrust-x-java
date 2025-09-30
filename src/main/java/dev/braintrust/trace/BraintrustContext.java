@@ -3,31 +3,32 @@ package dev.braintrust.trace;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextKey;
+import java.util.Objects;
 import java.util.Optional;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-/** Context propagation for Braintrust-specific attributes. */
+/**
+ * Used to identify the braintrust parent for spans and experiments. SDK users probably don't want
+ * to use this and instead should use {@link BraintrustTracing} or {@link dev.braintrust.eval.Eval}
+ */
 public final class BraintrustContext {
     private static final ContextKey<BraintrustContext> KEY = ContextKey.named("braintrust-context");
 
+    // NOTE we're actually not using this right now, but leaving in for the future
     @Nullable private final String projectId;
     @Nullable private final String experimentId;
-    @Nullable private final String parentType;
 
-    private BraintrustContext(
-            @Nullable String projectId,
-            @Nullable String experimentId,
-            @Nullable String parentType) {
+    private BraintrustContext(@Nullable String projectId, @Nullable String experimentId) {
         this.projectId = projectId;
         this.experimentId = experimentId;
-        this.parentType = parentType;
     }
 
     /** Creates a context for an experiment parent. */
-    public static Context of(String experimentId, Span span) {
-        return Context.current()
-                .with(span)
-                .with(KEY, new BraintrustContext(null, experimentId, "experiment"));
+    public static Context ofExperiment(@Nonnull String experimentId, @Nonnull Span span) {
+        Objects.requireNonNull(experimentId);
+        Objects.requireNonNull(span);
+        return Context.current().with(span).with(KEY, new BraintrustContext(null, experimentId));
     }
 
     /** Retrieves a BraintrustContext from the given Context. */
