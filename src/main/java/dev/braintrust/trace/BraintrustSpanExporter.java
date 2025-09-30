@@ -89,12 +89,13 @@ class BraintrustSpanExporter implements SpanExporter {
                             });
 
             BraintrustLogger.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
-            // Export the spans
             if (config.unitTetJavaExportSpansInMemory()) {
                 SPANS_EXPORTED.putIfAbsent(parent, new CopyOnWriteArrayList<>());
                 SPANS_EXPORTED.get(parent).addAll(spans);
+                return CompletableResultCode.ofSuccess();
+            } else {
+                return exporter.export(spans);
             }
-            return exporter.export(spans);
         } catch (Exception e) {
             BraintrustLogger.error("Failed to export spans", e);
             return CompletableResultCode.ofFailure();

@@ -13,10 +13,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 public interface BraintrustApiClient {
@@ -227,6 +227,8 @@ public interface BraintrustApiClient {
     /** Implementation for test doubling */
     class InMemoryImpl implements BraintrustApiClient {
         private final List<OrganizationAndProjectInfo> organizationAndProjectInfos;
+        private final Set<Experiment> experiments =
+                Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         public InMemoryImpl(OrganizationAndProjectInfo... organizationAndProjectInfos) {
             this.organizationAndProjectInfos = List.of(organizationAndProjectInfos);
@@ -257,7 +259,19 @@ public interface BraintrustApiClient {
 
         @Override
         public Experiment getOrCreateExperiment(CreateExperimentRequest request) {
-            throw new RuntimeException("not supported");
+            var existing =
+                    experiments.stream()
+                            .filter(exp -> exp.name().equals(request.name()))
+                            .findFirst();
+            return existing.orElseGet(
+                    () ->
+                            new Experiment(
+                                    request.name().hashCode() + "",
+                                    request.projectId(),
+                                    request.name(),
+                                    request.description(),
+                                    "notused",
+                                    "notused"));
         }
 
         @Override

@@ -10,11 +10,18 @@ import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.data.SpanData;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class BraintrustTracingTest {
+    public static Map<String, List<SpanData>> getExportedBraintrustSpans() {
+        return BraintrustSpanExporter.SPANS_EXPORTED;
+    }
+
     private final BraintrustConfig config =
             BraintrustConfig.of(
                     "BRAINTRUST_API_KEY", "foobar",
@@ -23,7 +30,7 @@ public class BraintrustTracingTest {
     @BeforeEach
     void beforeEach() {
         GlobalOpenTelemetry.resetForTest();
-        BraintrustSpanExporter.SPANS_EXPORTED.clear();
+        getExportedBraintrustSpans().clear();
     }
 
     @Test
@@ -31,10 +38,9 @@ public class BraintrustTracingTest {
         var sdk = (OpenTelemetrySdk) BraintrustTracing.of(config, true);
         doSimpleOtelTrace(BraintrustTracing.getTracer());
         assertTrue(sdk.getSdkTracerProvider().forceFlush().join(10, TimeUnit.SECONDS).isSuccess());
-        assertEquals(1, BraintrustSpanExporter.SPANS_EXPORTED.size());
+        assertEquals(1, getExportedBraintrustSpans().size());
         var spanData =
-                BraintrustSpanExporter.SPANS_EXPORTED.get(
-                        config.getBraintrustParentValue().orElseThrow());
+                getExportedBraintrustSpans().get(config.getBraintrustParentValue().orElseThrow());
         assertNotNull(spanData);
         assertEquals(1, spanData.size());
         assertEquals(
@@ -56,10 +62,9 @@ public class BraintrustTracingTest {
         GlobalOpenTelemetry.set(sdk);
         doSimpleOtelTrace(sdk.getTracer("some-instrumentation"));
         assertTrue(sdk.getSdkTracerProvider().forceFlush().join(10, TimeUnit.SECONDS).isSuccess());
-        assertEquals(1, BraintrustSpanExporter.SPANS_EXPORTED.size());
+        assertEquals(1, getExportedBraintrustSpans().size());
         var spanData =
-                BraintrustSpanExporter.SPANS_EXPORTED.get(
-                        config.getBraintrustParentValue().orElseThrow());
+                getExportedBraintrustSpans().get(config.getBraintrustParentValue().orElseThrow());
         assertNotNull(spanData);
         assertEquals(1, spanData.size());
         assertEquals(

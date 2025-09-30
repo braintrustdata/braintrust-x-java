@@ -10,10 +10,13 @@ import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
+import java.net.URI;
 import java.util.*;
 import java.util.function.Function;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import lombok.Getter;
+import lombok.SneakyThrows;
 
 /**
  * An evaluation framework for testing AI models.
@@ -38,7 +41,7 @@ public final class Eval<INPUT, OUTPUT> {
     private Eval(Builder<INPUT, OUTPUT> builder) {
         this.experimentName = builder.experimentName;
         this.config = Objects.requireNonNull(builder.config);
-        this.client = BraintrustApiClient.of(config);
+        this.client = Objects.requireNonNull(builder.apiClient);
         if (null == builder.projectId) {
             this.orgAndProject = client.getProjectAndOrgInfo().orElseThrow();
         } else {
@@ -152,17 +155,23 @@ public final class Eval<INPUT, OUTPUT> {
 
     /** Results of all eval cases of an experiment. */
     public class Result {
-        private final String experimentUrl;
+        @Getter private final String experimentUrl;
 
+        @SneakyThrows
         private Result() {
+            var baseURI = new URI(config.appUrl());
             this.experimentUrl =
-                    config.appUrl()
-                            + "/app/"
-                            + orgAndProject.orgInfo().name()
-                            + "/p/"
-                            + orgAndProject.project().name()
-                            + "/experiments/"
-                            + experimentName;
+                    new URI(
+                                    baseURI.getScheme(),
+                                    baseURI.getHost(),
+                                    "/app/"
+                                            + orgAndProject.orgInfo().name()
+                                            + "/p/"
+                                            + orgAndProject.project().name()
+                                            + "/experiments/"
+                                            + experimentName,
+                                    null)
+                            .toASCIIString();
         }
 
         public String createReportString() {
@@ -183,6 +192,7 @@ public final class Eval<INPUT, OUTPUT> {
     public static final class Builder<INPUT, OUTPUT> {
         private @Nonnull String experimentName = "unnamed-java-eval";
         private @Nullable BraintrustConfig config;
+        private @Nullable BraintrustApiClient apiClient;
         private @Nullable String projectId;
         private @Nullable Tracer tracer = null;
         private @Nonnull List<EvalCase<INPUT, OUTPUT>> evalCases = List.of();
@@ -205,6 +215,9 @@ public final class Eval<INPUT, OUTPUT> {
             if (scorers.isEmpty()) {
                 throw new RuntimeException("must provide at least one scorer");
             }
+            if (null == apiClient) {
+                apiClient = BraintrustApiClient.of(config);
+            }
             Objects.requireNonNull(task);
             return new Eval<>(this);
         }
@@ -221,6 +234,11 @@ public final class Eval<INPUT, OUTPUT> {
 
         public Builder<INPUT, OUTPUT> config(BraintrustConfig config) {
             this.config = config;
+            return this;
+        }
+
+        public Builder<INPUT, OUTPUT> apiClient(BraintrustApiClient apiClient) {
+            this.apiClient = apiClient;
             return this;
         }
 
