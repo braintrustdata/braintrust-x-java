@@ -25,7 +25,7 @@ public class BraintrustTracingTest {
     private final BraintrustConfig config =
             BraintrustConfig.of(
                     "BRAINTRUST_API_KEY", "foobar",
-                    "BRAINTRUST_TEST_JAVA_EXPORT_SPANS_IN_MEMORY", "true");
+                    "BRAINTRUST_JAVA_EXPORT_SPANS_IN_MEMORY_FOR_UNIT_TEST", "true");
 
     @BeforeEach
     void beforeEach() {

@@ -31,8 +31,8 @@ public final class BraintrustConfig extends BaseConfig {
             Duration.ofSeconds(getConfig("BRAINTRUST_REQUEST_TIMEOUT", 30));
 
     /** Setting for unit testing. Do not use in production. */
-    private final boolean unitTetJavaExportSpansInMemory =
-            getConfig("BRAINTRUST_TEST_JAVA_EXPORT_SPANS_IN_MEMORY", false);
+    private final boolean exportSpansInMemoryForUnitTest =
+            getConfig("BRAINTRUST_JAVA_EXPORT_SPANS_IN_MEMORY_FOR_UNIT_TEST", false);
 
     public static BraintrustConfig fromEnvironment() {
         return of();

@@ -54,7 +54,7 @@ class BraintrustSpanProcessor implements SpanProcessor {
 
     @Override
     public void onStart(@NotNull Context parentContext, ReadWriteSpan span) {
-        BraintrustLogger.debug("OnStart: span={}, parent={}", span.getName(), parentContext);
+        BraintrustLogger.get().debug("OnStart: span={}, parent={}", span.getName(), parentContext);
 
         // Check if span already has a parent attribute
         if (span.getAttribute(PARENT) == null) {
@@ -66,10 +66,11 @@ class BraintrustSpanProcessor implements SpanProcessor {
                         .ifPresent(
                                 parentValue -> {
                                     span.setAttribute(PARENT, parentValue);
-                                    BraintrustLogger.debug(
-                                            "OnStart: set parent {} for span {}",
-                                            parentValue,
-                                            span.getName());
+                                    BraintrustLogger.get()
+                                            .debug(
+                                                    "OnStart: set parent {} for span {}",
+                                                    parentValue,
+                                                    span.getName());
                                 });
             } else {
                 btContext
@@ -77,16 +78,21 @@ class BraintrustSpanProcessor implements SpanProcessor {
                         .ifPresent(
                                 id -> {
                                     span.setAttribute(PARENT, "project_id:" + id);
-                                    BraintrustLogger.debug(
-                                            "OnStart: set parent project {} from context", id);
+                                    BraintrustLogger.get()
+                                            .debug(
+                                                    "OnStart: set parent project {} from context",
+                                                    id);
                                 });
                 btContext
                         .experimentId()
                         .ifPresent(
                                 id -> {
                                     span.setAttribute(PARENT, "experiment_id:" + id);
-                                    BraintrustLogger.debug(
-                                            "OnStart: set parent experiment {} from context", id);
+                                    BraintrustLogger.get()
+                                            .debug(
+                                                    "OnStart: set parent experiment {} from"
+                                                            + " context",
+                                                    id);
                                 });
             }
         }
@@ -134,15 +140,16 @@ class BraintrustSpanProcessor implements SpanProcessor {
 
     private void logSpanDetails(ReadableSpan span) {
         var spanData = span.toSpanData();
-        BraintrustLogger.debug(
-                "Span completed: name={}, traceId={}, spanId={}, duration={}ms, attributes={},"
-                        + " events={}",
-                spanData.getName(),
-                spanData.getTraceId(),
-                spanData.getSpanId(),
-                (spanData.getEndEpochNanos() - spanData.getStartEpochNanos()) / 1_000_000,
-                spanData.getAttributes(),
-                spanData.getEvents());
+        BraintrustLogger.get()
+                .debug(
+                        "Span completed: name={}, traceId={}, spanId={}, duration={}ms,"
+                                + " attributes={}, events={}",
+                        spanData.getName(),
+                        spanData.getTraceId(),
+                        spanData.getSpanId(),
+                        (spanData.getEndEpochNanos() - spanData.getStartEpochNanos()) / 1_000_000,
+                        spanData.getAttributes(),
+                        spanData.getEvents());
     }
 
     /** Parent context for spans (project or experiment). */

@@ -76,7 +76,7 @@ final class ChatCompletionEventsHelper {
                                         "braintrust.input_json",
                                         JSON_MAPPER.writeValueAsString(content));
                     } catch (JsonProcessingException e) {
-                        BraintrustLogger.error("Error mapping json", e);
+                        BraintrustLogger.get().error("Error mapping json", e);
                     }
                     body.put("content", Value.of(content));
                 }
@@ -200,7 +200,7 @@ final class ChatCompletionEventsHelper {
             var completionJson = JSON_MAPPER.writeValueAsString(completion);
             Span.current().setAttribute("braintrust.output_json", completionJson);
         } catch (JsonProcessingException e) {
-            BraintrustLogger.error("Error mapping completion json", e);
+            BraintrustLogger.get().error("Error mapping completion json", e);
         }
         for (ChatCompletion.Choice choice : completion.choices()) {
             ChatCompletionMessage choiceMsg = choice.message();

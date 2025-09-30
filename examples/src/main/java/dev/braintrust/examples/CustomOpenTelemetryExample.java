@@ -1,7 +1,6 @@
 package dev.braintrust.examples;
 
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.log.BraintrustLogger;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.exporter.otlp.http.logs.OtlpHttpLogRecordExporter;
@@ -88,7 +87,7 @@ public class CustomOpenTelemetryExample {
                 .addShutdownHook(
                         new Thread(
                                 () -> {
-                                    BraintrustLogger.debug(
+                                    System.out.println(
                                             "Shutting down. Force-Flushing all otel data.");
                                     var result =
                                             CompletableResultCode.ofAll(
@@ -108,7 +107,7 @@ public class CustomOpenTelemetryExample {
                                                                                     TimeUnit
                                                                                             .SECONDS))
                                                             .toList());
-                                    BraintrustLogger.debug(
+                                    System.out.println(
                                             "otel shutdown complete. Flush done: %s, Flush successful: %s"
                                                     .formatted(
                                                             result.isDone(), result.isSuccess()));

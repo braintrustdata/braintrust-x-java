@@ -61,7 +61,7 @@ public final class BraintrustTracing {
                         .build();
         if (registerGlobal) {
             GlobalOpenTelemetry.set(openTelemetry);
-            BraintrustLogger.debug("Registered OpenTelemetry globally");
+            BraintrustLogger.get().debug("Registered OpenTelemetry globally");
         }
         return openTelemetry;
     }
@@ -90,7 +90,8 @@ public final class BraintrustTracing {
         final Duration exportInterval = Duration.ofSeconds(5);
         final int maxQueueSize = 2048;
         final int maxExportBatchSize = 512;
-        BraintrustLogger.info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
+        BraintrustLogger.get()
+                .info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
 
         // Create resource first so BraintrustSpanProcessor can access service.name
         var resourceBuilder =
@@ -127,8 +128,8 @@ public final class BraintrustTracing {
                 .addShutdownHook(
                         new Thread(
                                 () -> {
-                                    BraintrustLogger.debug(
-                                            "Shutting down. Force-Flushing all otel data.");
+                                    BraintrustLogger.get()
+                                            .debug("Shutting down. Force-Flushing all otel data.");
                                     var result =
                                             CompletableResultCode.ofAll(
                                                     // run all flushes in parallel. Should (rarely)
@@ -143,10 +144,12 @@ public final class BraintrustTracing {
                                                                                     TimeUnit
                                                                                             .SECONDS))
                                                             .toList());
-                                    BraintrustLogger.debug(
-                                            "otel shutdown complete. Flush done: %s, Flush successful: %s"
-                                                    .formatted(
-                                                            result.isDone(), result.isSuccess()));
+                                    BraintrustLogger.get()
+                                            .debug(
+                                                    "otel shutdown complete. Flush done: %s, Flush successful: %s"
+                                                            .formatted(
+                                                                    result.isDone(),
+                                                                    result.isSuccess()));
                                 }));
     }
 

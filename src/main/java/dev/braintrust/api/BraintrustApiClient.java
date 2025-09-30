@@ -170,7 +170,7 @@ public interface BraintrustApiClient {
         }
 
         private <T> CompletableFuture<T> sendAsync(HttpRequest request, Class<T> responseType) {
-            BraintrustLogger.debug("API Request: {} {}", request.method(), request.uri());
+            BraintrustLogger.get().debug("API Request: {} {}", request.method(), request.uri());
 
             return httpClient
                     .sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -178,20 +178,22 @@ public interface BraintrustApiClient {
         }
 
         private <T> T handleResponse(HttpResponse<String> response, Class<T> responseType) {
-            BraintrustLogger.debug("API Response: {} - {}", response.statusCode(), response.body());
+            BraintrustLogger.get()
+                    .debug("API Response: {} - {}", response.statusCode(), response.body());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 try {
                     return objectMapper.readValue(response.body(), responseType);
                 } catch (IOException e) {
-                    BraintrustLogger.warn("Failed to parse response body", e);
+                    BraintrustLogger.get().warn("Failed to parse response body", e);
                     throw new ApiException("Failed to parse response body", e);
                 }
             } else {
-                BraintrustLogger.warn(
-                        "API request failed with status {}: {}",
-                        response.statusCode(),
-                        response.body());
+                BraintrustLogger.get()
+                        .warn(
+                                "API request failed with status {}: {}",
+                                response.statusCode(),
+                                response.body());
                 throw new ApiException(
                         String.format(
                                 "API request failed with status %d: %s",

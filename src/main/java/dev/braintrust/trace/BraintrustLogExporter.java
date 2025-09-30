@@ -60,7 +60,7 @@ class BraintrustLogExporter implements LogRecordExporter {
         try {
             // Get or create exporter for this parent
             if (exporterCache.size() >= 1024) {
-                BraintrustLogger.info("Clearing exporter cache. This should not happen");
+                BraintrustLogger.get().info("Clearing exporter cache. This should not happen");
                 exporterCache.clear();
             }
             var exporter =
@@ -78,18 +78,19 @@ class BraintrustLogExporter implements LogRecordExporter {
                                 // Add x-bt-parent header if we have a parent
                                 if (!p.isEmpty()) {
                                     exporterBuilder.addHeader("x-bt-parent", p);
-                                    BraintrustLogger.debug(
-                                            "Created log exporter with x-bt-parent: {}", p);
+                                    BraintrustLogger.get()
+                                            .debug("Created log exporter with x-bt-parent: {}", p);
                                 }
 
                                 return exporterBuilder.build();
                             });
 
-            BraintrustLogger.debug("Exporting {} logs with x-bt-parent: {}", logs.size(), parent);
+            BraintrustLogger.get()
+                    .debug("Exporting {} logs with x-bt-parent: {}", logs.size(), parent);
             // Export the logs
             return exporter.export(logs);
         } catch (Exception e) {
-            BraintrustLogger.error("Failed to export logs", e);
+            BraintrustLogger.get().error("Failed to export logs", e);
             return CompletableResultCode.ofFailure();
         }
     }

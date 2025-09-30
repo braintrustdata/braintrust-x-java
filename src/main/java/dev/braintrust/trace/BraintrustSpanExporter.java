@@ -63,7 +63,7 @@ class BraintrustSpanExporter implements SpanExporter {
         try {
             // Get or create exporter for this parent
             if (exporterCache.size() >= 1024) {
-                BraintrustLogger.info("Clearing exporter cache. This should not happen");
+                BraintrustLogger.get().info("Clearing exporter cache. This should not happen");
                 exporterCache.clear();
             }
             var exporter =
@@ -81,15 +81,16 @@ class BraintrustSpanExporter implements SpanExporter {
                                 // Add x-bt-parent header if we have a parent
                                 if (!p.isEmpty()) {
                                     exporterBuilder.addHeader("x-bt-parent", p);
-                                    BraintrustLogger.debug(
-                                            "Created exporter with x-bt-parent: {}", p);
+                                    BraintrustLogger.get()
+                                            .debug("Created exporter with x-bt-parent: {}", p);
                                 }
 
                                 return exporterBuilder.build();
                             });
 
-            BraintrustLogger.debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
-            if (config.unitTetJavaExportSpansInMemory()) {
+            BraintrustLogger.get()
+                    .debug("Exporting {} spans with x-bt-parent: {}", spans.size(), parent);
+            if (config.exportSpansInMemoryForUnitTest()) {
                 SPANS_EXPORTED.putIfAbsent(parent, new CopyOnWriteArrayList<>());
                 SPANS_EXPORTED.get(parent).addAll(spans);
                 return CompletableResultCode.ofSuccess();
@@ -97,7 +98,7 @@ class BraintrustSpanExporter implements SpanExporter {
                 return exporter.export(spans);
             }
         } catch (Exception e) {
-            BraintrustLogger.error("Failed to export spans", e);
+            BraintrustLogger.get().error("Failed to export spans", e);
             return CompletableResultCode.ofFailure();
         }
     }
