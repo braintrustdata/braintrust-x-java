@@ -6,8 +6,11 @@ plugins {
   id("io.freefair.lombok") version "9.0.0-rc2"
 }
 
+// use braintrust.properties as the single source of truth for sdk version
+def braintrustProps = new Properties()
+file('src/main/resources/braintrust.properties').withInputStream { braintrustProps.load(it) }
+version = braintrustProps.getProperty('sdk.version')
 group = 'dev.braintrust'
-version = '0.0.1-SNAPSHOT'
 
 java {
   sourceCompatibility = JavaVersion.VERSION_17
@@ -64,6 +67,7 @@ test {
   }
   environment 'TEST_VAR1', 'fromenv1'
   environment 'TEST_VAR2', 'fromenv2'
+  environment 'GRADLE_SDK_VERSION', version
 }
 
 // Enable preview features for pattern matching, etc.

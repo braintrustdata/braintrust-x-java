@@ -19,6 +19,7 @@ import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -30,8 +31,8 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class BraintrustTracing {
-    private static final String INSTRUMENTATION_NAME = "braintrust-java";
-    private static final String INSTRUMENTATION_VERSION = "0.0.1";
+    static final String INSTRUMENTATION_NAME = "braintrust-java";
+    static final String INSTRUMENTATION_VERSION = loadVersionFromProperties();
 
     /**
      * Quick start method that sets up global OpenTelemetry with Braintrust defaults. <br>
@@ -158,6 +159,16 @@ public final class BraintrustTracing {
     /** Gets a tracer from a specific OpenTelemetry instance. */
     public static Tracer getTracer(OpenTelemetry openTelemetry) {
         return openTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
+    }
+
+    private static String loadVersionFromProperties() {
+        try (var is = BraintrustTracing.class.getResourceAsStream("/braintrust.properties")) {
+            var props = new Properties();
+            props.load(is);
+            return props.getProperty("sdk.version");
+        } catch (Exception e) {
+            throw new RuntimeException("unable to determine sdk version", e);
+        }
     }
 
     private BraintrustTracing() {}
