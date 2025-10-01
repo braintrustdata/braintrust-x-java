@@ -149,11 +149,3 @@ task installGitHooks(type: Exec) {
   group = 'Build Setup'
   commandLine 'bash', 'scripts/install-hooks.sh'
 }
-
-// Run installGitHooks after project evaluation
-afterEvaluate {
-  // Install hooks when building for the first time
-  tasks.named('build').configure {
-    dependsOn installGitHooks
-  }
-}

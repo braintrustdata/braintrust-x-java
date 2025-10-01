@@ -19,6 +19,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Provides the necessary API calls for the Braintrust SDK. Users of the SDK should favor using
+ * {@link dev.braintrust.eval.Eval} or {@link dev.braintrust.trace.BraintrustTracing}
+ */
 public interface BraintrustApiClient {
     /** Creates or gets a project by name. */
     Project getOrCreateProject(String projectName);

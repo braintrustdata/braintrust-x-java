@@ -10,7 +10,13 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 
-/** Configuration for Braintrust SDK */
+/**
+ * Configuration for Braintrust SDK with sane defaults.
+ *
+ * <p>Most SDK users will want to use envars to configure all Braintrust settings.
+ *
+ * <p>However, it's also possible to override any envar during config construction.
+ */
 @Getter
 @Accessors(fluent = true)
 public final class BraintrustConfig extends BaseConfig {
