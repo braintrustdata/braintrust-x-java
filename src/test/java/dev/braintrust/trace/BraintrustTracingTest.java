@@ -34,6 +34,16 @@ public class BraintrustTracingTest {
     }
 
     @Test
+    void instrumentationInfoIsPresent() {
+        assertNotNull(BraintrustTracing.INSTRUMENTATION_NAME);
+        assertFalse(BraintrustTracing.INSTRUMENTATION_NAME.isEmpty());
+        var gradleSdkVersion = System.getenv("GRADLE_SDK_VERSION");
+        assertNotNull(gradleSdkVersion);
+        assertFalse(gradleSdkVersion.isEmpty());
+        assertEquals(gradleSdkVersion, BraintrustTracing.INSTRUMENTATION_VERSION);
+    }
+
+    @Test
     void globalBTTracing() {
         var sdk = (OpenTelemetrySdk) BraintrustTracing.of(config, true);
         doSimpleOtelTrace(BraintrustTracing.getTracer());
