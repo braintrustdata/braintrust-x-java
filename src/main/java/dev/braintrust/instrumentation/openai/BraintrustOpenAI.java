@@ -4,6 +4,7 @@ import com.openai.client.OpenAIClient;
 import dev.braintrust.instrumentation.openai.otel.OpenAITelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 
+/** Braintrust OpenAI client instrumentation. */
 public class BraintrustOpenAI {
     /** Instrument openai client with braintrust traces */
     public static OpenAIClient wrapOpenAI(OpenTelemetry openTelemetry, OpenAIClient openAIClient) {
