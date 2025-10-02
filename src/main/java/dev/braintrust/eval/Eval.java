@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.braintrust.api.BraintrustApiClient;
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.spec.SdkSpec;
 import dev.braintrust.trace.BraintrustContext;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.common.AttributeKey;
@@ -26,7 +25,7 @@ import lombok.SneakyThrows;
  */
 public final class Eval<INPUT, OUTPUT> {
     private static final AttributeKey<String> PARENT =
-            AttributeKey.stringKey(SdkSpec.Attributes.PARENT);
+            AttributeKey.stringKey(BraintrustTracing.PARENT_KEY);
     private static final ObjectMapper JSON_MAPPER =
             new com.fasterxml.jackson.databind.ObjectMapper();
     private final @Nonnull String experimentName;
