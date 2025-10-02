@@ -1,0 +1,66 @@
+# This workflow creates a new release by running CI and then executing the release script.
+# It can be run manually with a choice of which semver segment to bump.
+name: Create And Publish Release
+on:
+  workflow_dispatch:
+    inputs:
+      semver_segment_to_bump:
+        description: 'Which semver segment to bump'
+        required: true
+        default: 'PATCH'
+        type: choice
+        options:
+          - PATCH
+          - MINOR
+          - MAJOR
+      branch:
+        description: 'Branch to create release from'
+        required: true
+        default: 'main'
+        type: string
+
+jobs:
+  ci:
+    name: Run CI
+    # we want to run ubuntu-latest but we'll pin to a specific version so CI is reproducable
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Run tests
+        run: ./gradlew check build
+
+  create-release:
+    name: Create Release
+    # we want to run ubuntu-latest but we'll pin to a specific version so CI is reproducable
+    runs-on: ubuntu-24.04
+    needs: ci
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Run release script
+        run: |
+          chmod +x scripts/create-new-release.sh
+          scripts/create-new-release.sh --push=true --branch=${{ inputs.branch }} --semver-segment-to-bump=${{ inputs.semver_segment_to_bump }}
