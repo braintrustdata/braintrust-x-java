@@ -63,4 +63,4 @@ jobs:
       - name: Run release script
         run: |
           chmod +x scripts/create-new-release.sh
-          scripts/create-new-release.sh --push=true --branch=${{ inputs.branch }} --semver-segment-to-bump=${{ inputs.semver_segment_to_bump }}
+          scripts/create-new-release.sh --push=false --branch=${{ inputs.branch }} --semver-segment-to-bump=${{ inputs.semver_segment_to_bump }}
