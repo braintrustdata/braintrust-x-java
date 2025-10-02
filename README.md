@@ -69,30 +69,6 @@ The remaining sections document developing the SDK itself. Nothing below is requ
   - These hooks automatically run common checks for you but CI also runs the same checks before merging to the main branch is allowed
   - NOTE: this will overwrite existing hooks. Take backups before running
 
-## Releasing the SDK
-
-To release the SDK:
-- go to the [Create And Publish Release Githug Workflow](https://github.com/braintrustdata/braintrust-x-java/actions/workflows/create-and-publish-release.yml)
-- Click `Run Workflow`
-- (optional) change desired settings
-- Run the workflow and monitor conosle output for success
-- Verify Github and Sonatype have the correct artifacts
-
-<!-- ### Backing out a bad release -->
-<!-- TODO -- document this -->
-
-### Release Workflow Details
-This section details the process that the `create-and-publish-release` workflow follows. Not required to do the release.
-
-The SDK follows standard semantic versioning. The workflow takes a single argument for which segment to bump (defaults to PATCH)
-
-The workflow will:
-- create a release commit for the new release
-- tag the release as v{$release-version}
-- create a new commit for the next `-SNAPSHOT` version
-- publish to github
-- publish to sonatype
-
 ## Running a local OpenTelemetry collector
 
 OpenTelemetry provides a local collector with a debug exporter which logs all traces, logs, and metrics to stdout.
