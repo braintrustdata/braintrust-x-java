@@ -69,12 +69,12 @@ The remaining sections document developing the SDK itself. Nothing below is requ
   - These hooks automatically run common checks for you but CI also runs the same checks before merging to the main branch is allowed
   - NOTE: this will overwrite existing hooks. Take backups before running
 
-## Releasing the SDK
+<!-- ## Releasing the SDK -->
 
-TODO: polish this section
+<!-- TODO: polish this section -->
 
-- summary: push the button on github
-- bumping a major
+<!-- - summary: push the button on github -->
+<!-- - bumping a major -->
 
 ## Running a local OpenTelemetry collector
 
