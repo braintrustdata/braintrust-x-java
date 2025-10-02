@@ -6,10 +6,86 @@ plugins {
   id("io.freefair.lombok") version "9.0.0-rc2"
 }
 
-// use braintrust.properties as the single source of truth for sdk version
-def braintrustProps = new Properties()
-file('src/main/resources/braintrust.properties').withInputStream { braintrustProps.load(it) }
-version = braintrustProps.getProperty('sdk.version')
+// Generate braintrust.properties at build time with smart versioning
+task generateBraintrustProperties {
+  description = 'Generate braintrust.properties with smart git-based versioning'
+  group = 'build'
+
+  def outputDir = file("$buildDir/generated/resources")
+  def outputFile = file("$outputDir/braintrust.properties")
+
+  outputs.file outputFile
+  outputs.upToDateWhen { false } // Always regenerate to get latest version
+
+  doLast {
+    outputDir.mkdirs()
+
+    def version = generateVersion()
+
+    outputFile.text = "sdk.version=${version}\n"
+
+    logger.info("Generated braintrust.properties with sdk.version=${version}")
+  }
+}
+
+def generateVersion() {
+  // Check if workspace is clean
+  def gitStatusProcess = ['git', 'status', '--porcelain'].execute()
+  gitStatusProcess.waitFor()
+  def gitStatus = gitStatusProcess.text.trim()
+  def isDirty = !gitStatus.isEmpty()
+
+  // Get current commit SHA (short version)
+  def gitShaProcess = ['git', 'rev-parse', '--short', 'HEAD'].execute()
+  gitShaProcess.waitFor()
+  def gitSha = gitShaProcess.text.trim()
+
+  // Check if we're currently on a tag
+  def currentTag = null
+  try {
+    def currentTagProcess = ['git', 'describe', '--exact-match', '--tags', 'HEAD'].execute()
+    currentTagProcess.waitFor()
+    if (currentTagProcess.exitValue() == 0) {
+      currentTag = currentTagProcess.text.trim()
+    }
+  } catch (Exception e) {
+    // Not on a tag, that's fine
+  }
+
+  def version
+  if (currentTag != null) {
+    // We're on a tag, use the tag name
+    version = currentTag
+  } else {
+    // Not on a tag, find the most recent tag
+    def mostRecentTag = null
+    try {
+      def mostRecentTagProcess = ['git', 'describe', '--tags', '--abbrev=0'].execute()
+      mostRecentTagProcess.waitFor()
+      if (mostRecentTagProcess.exitValue() == 0) {
+        mostRecentTag = mostRecentTagProcess.text.trim()
+      }
+    } catch (Exception e) {
+      // No tags found, use just the SHA
+      mostRecentTag = null
+    }
+
+    if (mostRecentTag != null) {
+      version = "${mostRecentTag}-${gitSha}"
+    } else {
+      version = gitSha
+    }
+  }
+
+  // Append -DIRTY if workspace is not clean
+  if (isDirty) {
+    version = "${version}-DIRTY"
+  }
+
+  return version
+}
+
+version = generateVersion() // we could cache but not worth the hassle
 group = 'dev.braintrust'
 
 java {
@@ -60,6 +136,7 @@ dependencies {
 }
 
 test {
+  dependsOn generateBraintrustProperties
   useJUnitPlatform()
   testLogging {
     events "passed", "skipped", "failed"
@@ -67,7 +144,11 @@ test {
   }
   environment 'TEST_VAR1', 'fromenv1'
   environment 'TEST_VAR2', 'fromenv2'
-  environment 'GRADLE_SDK_VERSION', version
+
+  doFirst {
+    // Set the version at execution time, after properties are generated
+    environment 'GRADLE_SDK_VERSION', version
+  }
 }
 
 // Enable preview features for pattern matching, etc.
@@ -123,6 +204,20 @@ publishing {
   }
 }
 
+
+// Include generated resources in the JAR
+sourceSets {
+  main {
+    resources {
+      srcDir "$buildDir/generated/resources"
+    }
+  }
+}
+
+// Make sure properties are generated before compilation and packaging
+compileJava.dependsOn generateBraintrustProperties
+processResources.dependsOn generateBraintrustProperties
+jar.dependsOn generateBraintrustProperties
 
 // Configure Spotless for code formatting
 spotless {
