@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class BraintrustTracing {
+    public static final String PARENT_KEY = "braintrust.parent";
     static final String OTEL_SERVICE_NAME = "braintrust-app";
     static final String INSTRUMENTATION_NAME = "braintrust-java";
     static final String INSTRUMENTATION_VERSION = loadVersionFromProperties();

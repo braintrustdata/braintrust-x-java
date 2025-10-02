@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.braintrust.api.BraintrustApiClient;
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.spec.SdkSpec;
 import dev.braintrust.trace.BraintrustTracing;
 import dev.braintrust.trace.BraintrustTracingTest;
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -74,7 +73,7 @@ public class EvalTest {
                 span -> {
                     var parent =
                             span.getAttributes()
-                                    .get(AttributeKey.stringKey(SdkSpec.Attributes.PARENT));
+                                    .get(AttributeKey.stringKey(BraintrustTracing.PARENT_KEY));
                     assertEquals(
                             "experiment_id:" + experiment.id(),
                             parent,

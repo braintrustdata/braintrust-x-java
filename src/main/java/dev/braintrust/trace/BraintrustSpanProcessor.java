@@ -1,7 +1,6 @@
 package dev.braintrust.trace;
 
 import dev.braintrust.config.BraintrustConfig;
-import dev.braintrust.spec.SdkSpec;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.sdk.common.CompletableResultCode;
@@ -21,10 +20,9 @@ import org.jetbrains.annotations.NotNull;
  */
 @Slf4j
 class BraintrustSpanProcessor implements SpanProcessor {
-
     // Braintrust-specific attributes
     public static final AttributeKey<String> PARENT =
-            AttributeKey.stringKey(SdkSpec.Attributes.PARENT);
+            AttributeKey.stringKey(BraintrustTracing.PARENT_KEY);
 
     private final BraintrustConfig config;
     private final SpanProcessor delegate;
