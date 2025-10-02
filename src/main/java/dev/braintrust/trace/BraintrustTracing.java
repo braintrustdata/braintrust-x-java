@@ -17,8 +17,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -31,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class BraintrustTracing {
+    static final String OTEL_SERVICE_NAME = "braintrust-app";
     static final String INSTRUMENTATION_NAME = "braintrust-java";
     static final String INSTRUMENTATION_VERSION = loadVersionFromProperties();
 
@@ -85,21 +84,21 @@ public final class BraintrustTracing {
             @Nonnull SdkTracerProviderBuilder tracerProviderBuilder,
             @Nonnull SdkLoggerProviderBuilder loggerProviderBuilder,
             @Nonnull SdkMeterProviderBuilder meterProviderBuilder) {
-        // NOTE: these options are hardcoded for now. We'll move them into braintrust config
-        // as-needed
-        final Map<String, String> resourceAttributes = new HashMap<>();
-        final String serviceName = "braintrust-app";
         final Duration exportInterval = Duration.ofSeconds(5);
         final int maxQueueSize = 2048;
         final int maxExportBatchSize = 512;
-        log.info("Initializing Braintrust OpenTelemetry with service={}", serviceName);
+        log.info(
+                "Initializing Braintrust OpenTelemetry with service={}, instrumentation-name={},"
+                        + " instrumentation-version={}",
+                OTEL_SERVICE_NAME,
+                INSTRUMENTATION_NAME,
+                INSTRUMENTATION_VERSION);
 
         // Create resource first so BraintrustSpanProcessor can access service.name
         var resourceBuilder =
                 Resource.getDefault().toBuilder()
-                        .put(ResourceAttributes.SERVICE_NAME, serviceName)
+                        .put(ResourceAttributes.SERVICE_NAME, OTEL_SERVICE_NAME)
                         .put(ResourceAttributes.SERVICE_VERSION, INSTRUMENTATION_VERSION);
-        resourceAttributes.forEach(resourceBuilder::put);
         var resource = resourceBuilder.build();
 
         // spans
