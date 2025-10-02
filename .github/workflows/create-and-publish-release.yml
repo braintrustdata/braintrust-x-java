@@ -1,0 +1,10 @@
+# This workflow is triggered when a GitHub release is created.
+# It can also be run manually to re-publish to Sonatype in case it failed for some reason.
+# You can run this workflow by navigating to https://www.github.com/braintrustdata/braintrust-java/actions/workflows/publish-sonatype.yml
+name: Create And Publish Release
+on:
+  workflow_dispatch:
+
+# TODO
+# - run CI -- abort on failure
+# - run $REPO_ROOT/scripts/create-new-release.sh --push=true --branch=main

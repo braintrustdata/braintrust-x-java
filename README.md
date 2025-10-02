@@ -69,6 +69,13 @@ The remaining sections document developing the SDK itself. Nothing below is requ
   - These hooks automatically run common checks for you but CI also runs the same checks before merging to the main branch is allowed
   - NOTE: this will overwrite existing hooks. Take backups before running
 
+## Releasing the SDK
+
+TODO: polish this section
+
+- summary: push the button on github
+- bumping a major
+
 ## Running a local OpenTelemetry collector
 
 OpenTelemetry provides a local collector with a debug exporter which logs all traces, logs, and metrics to stdout.
