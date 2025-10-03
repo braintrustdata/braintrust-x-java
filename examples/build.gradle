@@ -20,6 +20,8 @@ dependencies {
   implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
   // to run OAI instrumentation examples
   implementation 'com.openai:openai-java:2.8.1'
+  // to run anthropic examples
+  implementation "com.anthropic:anthropic-java:2.8.1"
 }
 
 application {
@@ -61,6 +63,20 @@ task runExperiment(type: JavaExec) {
   description = 'Run the experiment example'
   classpath = sourceSets.main.runtimeClasspath
   mainClass = 'dev.braintrust.examples.ExperimentExample'
+  systemProperty 'org.slf4j.simpleLogger.log.dev.braintrust', braintrustLogLevel
+  debugOptions {
+    enabled = true
+    port = 5566
+    server = true
+    suspend = false
+  }
+}
+
+task runAnthropicInstrumentation(type: JavaExec) {
+  group = 'Braintrust SDK Examples'
+  description = 'Run the Anthropic instrumentation example. NOTE: this requires ANTHROPIC_API_KEY to be exported and will make a small call to anthropic, using your tokens'
+  classpath = sourceSets.main.runtimeClasspath
+  mainClass = 'dev.braintrust.examples.AnthropicInstrumentationExample'
   systemProperty 'org.slf4j.simpleLogger.log.dev.braintrust', braintrustLogLevel
   debugOptions {
     enabled = true
