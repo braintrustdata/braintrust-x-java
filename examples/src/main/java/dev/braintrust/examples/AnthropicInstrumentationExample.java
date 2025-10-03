@@ -5,6 +5,7 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.instrumentation.anthropic.BraintrustAnthropic;
 import dev.braintrust.trace.BraintrustTracing;
 
 /** Basic OTel + Anthropic instrumentation example */
@@ -21,12 +22,9 @@ public class AnthropicInstrumentationExample {
         var openTelemetry = BraintrustTracing.of(braintrustConfig, true);
         var tracer = BraintrustTracing.getTracer(openTelemetry);
 
-        AnthropicClient anthropicClient = AnthropicOkHttpClient.fromEnv();
-        /*
         // Wrap Anthropic client with Braintrust instrumentation
         AnthropicClient anthropicClient =
-                BraintrustAnthropic.wrapAnthropic(openTelemetry, AnthropicOkHttpClient.fromEnv());
-         */
+                BraintrustAnthropic.wrap(openTelemetry, AnthropicOkHttpClient.fromEnv());
 
         var rootSpan = tracer.spanBuilder("java-braintrust-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
