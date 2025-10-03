@@ -6,28 +6,78 @@ plugins {
   id("io.freefair.lombok") version "9.0.0-rc2"
 }
 
-// Generate braintrust.properties at build time with smart versioning
-task generateBraintrustProperties {
-  description = 'Generate braintrust.properties with smart git-based versioning'
-  group = 'build'
+version = generateVersion() // we could cache but not worth the hassle
+group = 'dev.braintrust'
 
-  def outputDir = file("$buildDir/generated/resources")
-  def outputFile = file("$outputDir/braintrust.properties")
-
-  outputs.file outputFile
-  outputs.upToDateWhen { false } // Always regenerate to get latest version
-
-  doLast {
-    outputDir.mkdirs()
-
-    def version = generateVersion()
-
-    outputFile.text = "sdk.version=${version}\n"
-
-    logger.info("Generated braintrust.properties with sdk.version=${version}")
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(17)
+    vendor = JvmVendorSpec.ADOPTIUM // eclipse JVM
   }
+  withJavadocJar()
+  withSourcesJar()
 }
 
+tasks.withType(JavaCompile).configureEach {
+  options.release = 17
+}
+
+repositories {
+  mavenCentral()
+}
+
+ext {
+  otelVersion = '1.54.1'
+  jacksonVersion = '2.16.1'
+  junitVersion = '5.11.4'
+  slf4jVersion = '2.0.17'
+}
+
+dependencies {
+  api "io.opentelemetry:opentelemetry-api:${otelVersion}"
+  api "io.opentelemetry:opentelemetry-sdk:${otelVersion}"
+  api "io.opentelemetry:opentelemetry-sdk-trace:${otelVersion}"
+  api "io.opentelemetry:opentelemetry-sdk-logs:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-exporter-logging:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-sdk-testing:${otelVersion}"
+  implementation "io.opentelemetry:opentelemetry-semconv:1.30.1-alpha"
+
+  implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
+  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:${jacksonVersion}"
+
+  implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+  runtimeOnly "org.slf4j:slf4j-simple:${slf4jVersion}"
+
+  implementation 'org.apache.commons:commons-lang3:3.14.0'
+  implementation 'com.google.code.findbugs:jsr305:3.0.2' // for @Nullable annotations
+
+  testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
+  testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
+  testImplementation 'com.github.tomakehurst:wiremock-jre8:2.35.0'
+
+  // OAI instrumentation
+  compileOnly 'com.openai:openai-java:2.8.1'
+  testImplementation 'com.openai:openai-java:2.8.1'
+  implementation "io.opentelemetry.instrumentation:opentelemetry-openai-java-1.1:2.19.0-alpha"
+}
+
+/**
+ * Use git to compute the sdk version
+ *
+ * This is written into braintrust.properties at build time and shipped into the distributed sdk jar
+ *
+ * - if we are on a tag (i.e. v0.0.3), use the tag
+ * - otherwise, use $mostRecentTag-$currentCommitSha
+ *
+ * Additionally, if the git workspace is not clean, append -DIRTY to the version
+ *
+ * Examples
+ * - v0.0.3
+ * - v0.0.3-c4af682
+ * - v0.0.3-c4af682-DIRTY
+ */
 def generateVersion() {
   // Check if workspace is clean
   def gitStatusProcess = ['git', 'status', '--porcelain'].execute()
@@ -85,54 +135,26 @@ def generateVersion() {
   return version
 }
 
-version = generateVersion() // we could cache but not worth the hassle
-group = 'dev.braintrust'
+// Generate braintrust.properties at build time with smart versioning
+task generateBraintrustProperties {
+  description = 'Generate braintrust.properties with smart git-based versioning'
+  group = 'build'
 
-java {
-  sourceCompatibility = JavaVersion.VERSION_17
-  targetCompatibility = JavaVersion.VERSION_17
-  withJavadocJar()
-  withSourcesJar()
-}
+  def outputDir = file("$buildDir/generated/resources")
+  def outputFile = file("$outputDir/braintrust.properties")
 
-repositories {
-  mavenCentral()
-}
+  outputs.file outputFile
+  outputs.upToDateWhen { false } // Always regenerate to get latest version
 
-ext {
-  otelVersion = '1.54.1'
-  jacksonVersion = '2.16.1'
-  junitVersion = '5.11.4'
-  slf4jVersion = '2.0.17'
-}
+  doLast {
+    outputDir.mkdirs()
 
-dependencies {
-  api "io.opentelemetry:opentelemetry-api:${otelVersion}"
-  api "io.opentelemetry:opentelemetry-sdk:${otelVersion}"
-  api "io.opentelemetry:opentelemetry-sdk-trace:${otelVersion}"
-  api "io.opentelemetry:opentelemetry-sdk-logs:${otelVersion}"
-  implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
-  implementation "io.opentelemetry:opentelemetry-exporter-logging:${otelVersion}"
-  implementation "io.opentelemetry:opentelemetry-sdk-testing:${otelVersion}"
-  implementation "io.opentelemetry:opentelemetry-semconv:1.30.1-alpha"
+    def version = generateVersion()
 
-  implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
-  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${jacksonVersion}"
-  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:${jacksonVersion}"
+    outputFile.text = "sdk.version=${version}\n"
 
-  implementation "org.slf4j:slf4j-api:${slf4jVersion}"
-  runtimeOnly "org.slf4j:slf4j-simple:${slf4jVersion}"
-
-  implementation 'org.apache.commons:commons-lang3:3.14.0'
-  implementation 'com.google.code.findbugs:jsr305:3.0.2' // for @Nullable annotations
-
-  compileOnly 'com.openai:openai-java:2.8.1'
-  implementation "io.opentelemetry.instrumentation:opentelemetry-openai-java-1.1:2.19.0-alpha"
-
-  testImplementation "org.junit.jupiter:junit-jupiter:${junitVersion}"
-  testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
-  testImplementation 'com.openai:openai-java:2.8.1'
-  testImplementation 'com.github.tomakehurst:wiremock-jre8:2.35.0'
+    logger.info("Generated braintrust.properties with sdk.version=${version}")
+  }
 }
 
 test {
@@ -170,7 +192,8 @@ jar {
     attributes(
       'Implementation-Title': 'Braintrust Java SDK',
       'Implementation-Version': version,
-      'Implementation-Vendor': 'Braintrust'
+      'Implementation-Vendor': 'Braintrust',
+      'Main-Class': 'dev.braintrust.trace.SDKMain'
     )
   }
 }
@@ -217,6 +240,7 @@ sourceSets {
 // Make sure properties are generated before compilation and packaging
 compileJava.dependsOn generateBraintrustProperties
 processResources.dependsOn generateBraintrustProperties
+sourcesJar.dependsOn generateBraintrustProperties
 jar.dependsOn generateBraintrustProperties
 
 // Configure Spotless for code formatting
@@ -237,6 +261,43 @@ spotless {
     endWithNewline()
   }
 }
+
+task validateJavaVersion {
+  doLast {
+    def currentVersion = JavaVersion.current()
+    def requiredVersion = JavaVersion.VERSION_17
+
+    if (!currentVersion.isCompatibleWith(requiredVersion)) {
+      throw new GradleException(
+        "This project requires Java ${requiredVersion} or later. " +
+        "Current Java version: ${currentVersion} " +
+        "(${System.getProperty('java.version')}) " +
+        "from ${System.getProperty('java.home')}"
+      )
+    }
+    // println "✓ Using Java ${currentVersion} from ${System.getProperty('java.home')}"
+  }
+}
+
+
+// Task to test the jar by running it
+task testJar(type: Exec) {
+  description = 'Test the jar by running it and fail build if non-zero exit code'
+  group = 'verification'
+  dependsOn jar
+
+  commandLine 'java', '-jar', jar.archiveFile.get().asFile.absolutePath
+
+  doFirst {
+    // println "Testing jar: ${jar.archiveFile.get().asFile.absolutePath}"
+  }
+}
+
+// Run validation before compilation
+compileJava.dependsOn validateJavaVersion
+
+// Run jar test as part of check task
+check.dependsOn testJar
 
 // Task to install git hooks
 task installGitHooks(type: Exec) {

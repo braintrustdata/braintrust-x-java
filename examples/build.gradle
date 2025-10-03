@@ -16,14 +16,10 @@ def braintrustLogLevel = System.getenv('BRAINTRUST_LOG_LEVEL') ?: 'info'
 
 dependencies {
   implementation project(':')
-  // TODO: not sure why I have to do this. I would have expected this to come over in the project root transitive deps
+  // To run otel examples
   implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
-
-  // Official OpenAI Java SDK
+  // to run OAI instrumentation examples
   implementation 'com.openai:openai-java:2.8.1'
-
-  // OkHttp for HTTP client (required by OpenAI SDK)
-  implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 application {
