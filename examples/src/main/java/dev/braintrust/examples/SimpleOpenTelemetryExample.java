@@ -21,7 +21,7 @@ public class SimpleOpenTelemetryExample {
                 braintrustConfig.fetchProjectURI()
                         + "/logs?r=%s&s=%s"
                                 .formatted(
-                                        span.getSpanContext().getSpanId(),
+                                        span.getSpanContext().getTraceId(),
                                         span.getSpanContext().getSpanId());
         System.out.println("\n\n  Example complete! View your data in Braintrust: " + url);
     }

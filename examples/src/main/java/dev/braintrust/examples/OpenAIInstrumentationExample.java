@@ -20,7 +20,7 @@ public class OpenAIInstrumentationExample {
         var tracer = BraintrustTracing.getTracer(openTelemetry);
         OpenAIClient openAIClient =
                 BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());
-        var rootSpan = tracer.spanBuilder("java-braintrust-example").startSpan();
+        var rootSpan = tracer.spanBuilder("openai-java-instrumentation-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
             Thread.sleep(70); // Not required. This is just to make the span look interesting
             var request =
@@ -41,7 +41,7 @@ public class OpenAIInstrumentationExample {
                 braintrustConfig.fetchProjectURI()
                         + "/logs?r=%s&s=%s"
                                 .formatted(
-                                        rootSpan.getSpanContext().getSpanId(),
+                                        rootSpan.getSpanContext().getTraceId(),
                                         rootSpan.getSpanContext().getSpanId());
         System.out.println("\n\n  Example complete! View your data in Braintrust: " + url);
     }

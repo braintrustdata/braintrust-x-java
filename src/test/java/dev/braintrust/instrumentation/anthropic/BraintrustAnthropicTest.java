@@ -1,16 +1,16 @@
-package dev.braintrust.instrumentation.openai;
+package dev.braintrust.instrumentation.anthropic;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static dev.braintrust.trace.BraintrustTracingTest.getExportedBraintrustSpans;
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.anthropic.client.AnthropicClient;
+import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.MessageCreateParams;
+import com.anthropic.models.messages.Model;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
-import com.openai.client.OpenAIClient;
-import com.openai.client.okhttp.OpenAIOkHttpClient;
-import com.openai.models.ChatModel;
-import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -22,9 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-public class BraintrustOpenAITest {
-    private static final ObjectMapper JSON_MAPPER =
-            new com.fasterxml.jackson.databind.ObjectMapper();
+public class BraintrustAnthropicTest {
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
     @RegisterExtension
     static WireMockExtension wireMock =
@@ -45,10 +44,10 @@ public class BraintrustOpenAITest {
 
     @Test
     @SneakyThrows
-    void testWrapOpenAi() {
-        // Mock the OpenAI API response
+    void testWrapAnthropic() {
+        // Mock the Anthropic API response
         wireMock.stubFor(
-                post(urlEqualTo("/chat/completions"))
+                post(urlEqualTo("/v1/messages"))
                         .willReturn(
                                 aResponse()
                                         .withStatus(200)
@@ -56,57 +55,55 @@ public class BraintrustOpenAITest {
                                         .withBody(
                                                 """
                                 {
-                                  "id": "chatcmpl-test123",
-                                  "object": "chat.completion",
-                                  "created": 1677652288,
-                                  "model": "gpt-4o-mini",
-                                  "choices": [
+                                  "id": "msg_test123",
+                                  "type": "message",
+                                  "role": "assistant",
+                                  "model": "claude-3-5-haiku-20241022",
+                                  "content": [
                                     {
-                                      "index": 0,
-                                      "message": {
-                                        "role": "assistant",
-                                        "content": "The capital of France is Paris."
-                                      },
-                                      "finish_reason": "stop"
+                                      "type": "text",
+                                      "text": "The capital of France is Paris."
                                     }
                                   ],
+                                  "stop_reason": "end_turn",
+                                  "stop_sequence": null,
                                   "usage": {
-                                    "prompt_tokens": 20,
-                                    "completion_tokens": 8,
-                                    "total_tokens": 28
+                                    "input_tokens": 20,
+                                    "output_tokens": 8
                                   }
                                 }
                                 """)));
 
         var openTelemetry = (OpenTelemetrySdk) BraintrustTracing.of(config, true);
 
-        // Create OpenAI client pointing to WireMock server
-        OpenAIClient openAIClient =
-                OpenAIOkHttpClient.builder()
+        // Create Anthropic client pointing to WireMock server
+        AnthropicClient anthropicClient =
+                AnthropicOkHttpClient.builder()
                         .baseUrl("http://localhost:" + wireMock.getPort())
                         .apiKey("test-api-key")
                         .build();
 
         // Wrap with Braintrust instrumentation
-        openAIClient = BraintrustOpenAI.wrapOpenAI(openTelemetry, openAIClient);
+        anthropicClient = BraintrustAnthropic.wrap(openTelemetry, anthropicClient);
 
         var request =
-                ChatCompletionCreateParams.builder()
-                        .model(ChatModel.GPT_4O_MINI)
-                        .addSystemMessage("You are a helpful assistant")
+                MessageCreateParams.builder()
+                        .model(Model.CLAUDE_3_5_HAIKU_20241022)
+                        .system("You are a helpful assistant")
                         .addUserMessage("What is the capital of France?")
+                        .maxTokens(50)
                         .temperature(0.0)
                         .build();
 
-        var response = openAIClient.chat().completions().create(request);
+        var response = anthropicClient.messages().create(request);
 
         // Verify the response
         assertNotNull(response);
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/chat/completions")));
-        assertEquals("chatcmpl-test123", response.id());
-        assertEquals(
-                "The capital of France is Paris.",
-                response.choices().get(0).message().content().get());
+        wireMock.verify(1, postRequestedFor(urlEqualTo("/v1/messages")));
+        assertEquals("msg_test123", response.id());
+        var contentBlock = response.content().get(0);
+        assertTrue(contentBlock.isText());
+        assertEquals("The capital of France is Paris.", contentBlock.asText().text());
 
         // Verify spans were exported
         assertTrue(
@@ -121,28 +118,23 @@ public class BraintrustOpenAITest {
         assertEquals(1, spanData.size());
         var span = spanData.get(0);
 
-        assertEquals("openai", span.getAttributes().get(AttributeKey.stringKey("gen_ai.system")));
+        // Verify standard GenAI attributes
         assertEquals(
-                "gpt-4o-mini",
+                "claude-3-5-haiku-20241022",
                 span.getAttributes().get(AttributeKey.stringKey("gen_ai.request.model")));
         assertEquals(
-                "gpt-4o-mini",
+                "claude-3-5-haiku-20241022",
                 span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.model")));
         assertEquals(
-                "[stop]",
+                "[end_turn]",
                 span.getAttributes()
                         .get(AttributeKey.stringArrayKey("gen_ai.response.finish_reasons"))
                         .toString());
         assertEquals(
                 "chat", span.getAttributes().get(AttributeKey.stringKey("gen_ai.operation.name")));
         assertEquals(
-                "chatcmpl-test123",
+                "msg_test123",
                 span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.id")));
-        assertEquals(
-                "[{\"content\":\"You are a helpful"
-                    + " assistant\",\"role\":\"system\",\"valid\":true},{\"content\":\"What is the"
-                    + " capital of France?\",\"role\":\"user\",\"valid\":true}]",
-                span.getAttributes().get(AttributeKey.stringKey("braintrust.input_json")));
         assertEquals(
                 "project_name:unit-test-project",
                 span.getAttributes().get(AttributeKey.stringKey("braintrust.parent")));
@@ -153,17 +145,31 @@ public class BraintrustOpenAITest {
         assertEquals(
                 0.0,
                 span.getAttributes().get(AttributeKey.doubleKey("gen_ai.request.temperature")));
+        assertEquals(
+                50L, span.getAttributes().get(AttributeKey.longKey("gen_ai.request.max_tokens")));
 
+        // Verify Braintrust-specific attributes
+        assertEquals(
+                "[{\"content\":\"You are a helpful"
+                    + " assistant\",\"role\":\"system\",\"valid\":false},{\"content\":\"What is the"
+                    + " capital of France?\",\"role\":\"user\",\"valid\":true}]",
+                span.getAttributes().get(AttributeKey.stringKey("braintrust.input_json")));
+
+        // Verify output JSON
         String outputJson =
                 span.getAttributes().get(AttributeKey.stringKey("braintrust.output_json"));
         assertNotNull(outputJson);
+
         var outputMessages = JSON_MAPPER.readTree(outputJson);
         assertEquals(1, outputMessages.size());
         var messageZero = outputMessages.get(0);
-        assertEquals("The capital of France is Paris.", messageZero.get("content").asText());
-
+        assertEquals("msg_test123", messageZero.get("id").asText());
+        assertEquals("message", messageZero.get("type").asText());
+        assertEquals("assistant", messageZero.get("role").asText());
         assertEquals(
-                "chatcmpl-test123",
-                span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.id")));
+                "The capital of France is Paris.",
+                messageZero.get("content").get(0).get("text").asText());
+        assertEquals(8, messageZero.get("usage").get("output_tokens").asInt());
+        assertEquals(20, messageZero.get("usage").get("input_tokens").asInt());
     }
 }
