@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    # we want to run ubuntu-latest but we'll pin to a specific version so CI is reproducable
+    # we want to run ubuntu-latest but we'll pin to a specific version so workflow is reproducable
     runs-on: ubuntu-24.04
 
     steps:

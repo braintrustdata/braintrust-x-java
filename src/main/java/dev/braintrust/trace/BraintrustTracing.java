@@ -90,10 +90,13 @@ public final class BraintrustTracing {
         final int maxExportBatchSize = 512;
         log.info(
                 "Initializing Braintrust OpenTelemetry with service={}, instrumentation-name={},"
-                        + " instrumentation-version={}",
+                        + " instrumentation-version={}, jvm-version={}, jvm-vendor={}, jvm-name={}",
                 OTEL_SERVICE_NAME,
                 INSTRUMENTATION_NAME,
-                INSTRUMENTATION_VERSION);
+                INSTRUMENTATION_VERSION,
+                System.getProperty("java.runtime.version"),
+                System.getProperty("java.vendor"),
+                System.getProperty("java.vm.name"));
 
         // Create resource first so BraintrustSpanProcessor can access service.name
         var resourceBuilder =
