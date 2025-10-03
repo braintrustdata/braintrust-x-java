@@ -17,7 +17,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 import java.time.Duration;
-import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
@@ -32,7 +31,7 @@ public final class BraintrustTracing {
     public static final String PARENT_KEY = "braintrust.parent";
     static final String OTEL_SERVICE_NAME = "braintrust-app";
     static final String INSTRUMENTATION_NAME = "braintrust-java";
-    static final String INSTRUMENTATION_VERSION = loadVersionFromProperties();
+    static final String INSTRUMENTATION_VERSION = SDKMain.loadVersionFromProperties();
 
     /**
      * Quick start method that sets up global OpenTelemetry with Braintrust defaults. <br>
@@ -88,15 +87,7 @@ public final class BraintrustTracing {
         final Duration exportInterval = Duration.ofSeconds(5);
         final int maxQueueSize = 2048;
         final int maxExportBatchSize = 512;
-        log.info(
-                "Initializing Braintrust OpenTelemetry with service={}, instrumentation-name={},"
-                        + " instrumentation-version={}, jvm-version={}, jvm-vendor={}, jvm-name={}",
-                OTEL_SERVICE_NAME,
-                INSTRUMENTATION_NAME,
-                INSTRUMENTATION_VERSION,
-                System.getProperty("java.runtime.version"),
-                System.getProperty("java.vendor"),
-                System.getProperty("java.vm.name"));
+        log.info(sdkInfoLogMessage());
 
         // Create resource first so BraintrustSpanProcessor can access service.name
         var resourceBuilder =
@@ -164,14 +155,15 @@ public final class BraintrustTracing {
         return openTelemetry.getTracer(INSTRUMENTATION_NAME, INSTRUMENTATION_VERSION);
     }
 
-    private static String loadVersionFromProperties() {
-        try (var is = BraintrustTracing.class.getResourceAsStream("/braintrust.properties")) {
-            var props = new Properties();
-            props.load(is);
-            return props.getProperty("sdk.version");
-        } catch (Exception e) {
-            throw new RuntimeException("unable to determine sdk version", e);
-        }
+    private static String sdkInfoLogMessage() {
+        return "Initializing Braintrust OpenTelemetry with service=%s, instrumentation-name=%s, instrumentation-version=%s, jvm-version=%s, jvm-vendor=%s, jvm-name=%s"
+                .formatted(
+                        OTEL_SERVICE_NAME,
+                        INSTRUMENTATION_NAME,
+                        INSTRUMENTATION_VERSION,
+                        System.getProperty("java.runtime.version"),
+                        System.getProperty("java.vendor"),
+                        System.getProperty("java.vm.name"));
     }
 
     private BraintrustTracing() {}
