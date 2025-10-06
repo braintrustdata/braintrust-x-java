@@ -7,7 +7,6 @@ package dev.braintrust.instrumentation.openai.otel;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionAssistantMessageParam;
@@ -15,7 +14,6 @@ import com.openai.models.chat.completions.ChatCompletionContentPartText;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionDeveloperMessageParam;
 import com.openai.models.chat.completions.ChatCompletionMessage;
-import com.openai.models.chat.completions.ChatCompletionMessageParam;
 import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
 import com.openai.models.chat.completions.ChatCompletionToolMessageParam;
@@ -36,6 +34,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -45,80 +44,16 @@ final class ChatCompletionEventsHelper {
     private static final ObjectMapper JSON_MAPPER =
             new com.fasterxml.jackson.databind.ObjectMapper();
 
+    @SneakyThrows
     public static void emitPromptLogEvents(
             Context context,
             Logger eventLogger,
             ChatCompletionCreateParams request,
             boolean captureMessageContent) {
-        for (ChatCompletionMessageParam msg : request.messages()) {
-            String eventType;
-            Map<String, Value<?>> body = new HashMap<>();
-            if (msg.isSystem()) {
-                eventType = "gen_ai.system.message";
-                if (captureMessageContent) {
-                    var content = contentToString(msg.asSystem().content());
-                    Span.current().setAttribute("instructions", content);
-                    body.put("content", Value.of(content));
-                }
-            } else if (msg.isDeveloper()) {
-                eventType = "gen_ai.system.message";
-                body.put("role", Value.of("developer"));
-                if (captureMessageContent) {
-                    var content = contentToString(msg.asDeveloper().content());
-                    body.put("content", Value.of(content));
-                }
-            } else if (msg.isUser()) {
-                eventType = "gen_ai.user.message";
-                if (captureMessageContent) {
-                    var content = contentToString(msg.asUser().content());
-                    try {
-                        Span.current()
-                                .setAttribute(
-                                        "braintrust.input_json",
-                                        JSON_MAPPER.writeValueAsString(content));
-                    } catch (JsonProcessingException e) {
-                        log.error("Error mapping json", e);
-                    }
-                    body.put("content", Value.of(content));
-                }
-            } else if (msg.isAssistant()) {
-                ChatCompletionAssistantMessageParam assistantMsg = msg.asAssistant();
-                eventType = "gen_ai.assistant.message";
-                if (captureMessageContent) {
-                    assistantMsg
-                            .content()
-                            .ifPresent(
-                                    content ->
-                                            body.put(
-                                                    "content", Value.of(contentToString(content))));
-                }
-                assistantMsg
-                        .toolCalls()
-                        .ifPresent(
-                                toolCalls -> {
-                                    List<Value<?>> toolCallsJson =
-                                            toolCalls.stream()
-                                                    .map(
-                                                            call ->
-                                                                    buildToolCallEventObject(
-                                                                            call,
-                                                                            captureMessageContent))
-                                                    .collect(Collectors.toList());
-                                    body.put("tool_calls", Value.of(toolCallsJson));
-                                });
-            } else if (msg.isTool()) {
-                ChatCompletionToolMessageParam toolMsg = msg.asTool();
-                eventType = "gen_ai.tool.message";
-                if (captureMessageContent) {
-                    body.put("content", Value.of(contentToString(toolMsg.content())));
-                }
-                body.put("id", Value.of(toolMsg.toolCallId()));
-            } else {
-                continue;
-            }
-            // newEvent(eventLogger, eventType).setContext(context).setBody(Value.of(body)).emit();
-        }
-        // "gen_ai.input.messages"
+        Span.current()
+                .setAttribute(
+                        "braintrust.input_json",
+                        JSON_MAPPER.writeValueAsString(request.messages()));
     }
 
     private static String contentToString(ChatCompletionToolMessageParam.Content content) {
@@ -192,16 +127,24 @@ final class ChatCompletionEventsHelper {
                 .collect(Collectors.joining());
     }
 
+    @SneakyThrows
     public static void emitCompletionLogEvents(
             Context context,
             Logger eventLogger,
             ChatCompletion completion,
             boolean captureMessageContent) {
-        try {
-            var completionJson = JSON_MAPPER.writeValueAsString(completion);
-            Span.current().setAttribute("braintrust.output_json", completionJson);
-        } catch (JsonProcessingException e) {
-            log.error("Error mapping completion json", e);
+        if (completion.choices().isEmpty()) {
+            log.debug("no choices in OAI response");
+        } else if (completion.choices().size() > 1) {
+            log.debug("multiple choices in OAI response: {}", completion.choices().size());
+        } else {
+            Span.current()
+                    .setAttribute(
+                            "braintrust.output_json",
+                            JSON_MAPPER.writeValueAsString(
+                                    new ChatCompletionMessage[] {
+                                        completion.choices().get(0).message()
+                                    }));
         }
         for (ChatCompletion.Choice choice : completion.choices()) {
             ChatCompletionMessage choiceMsg = choice.message();

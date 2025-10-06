@@ -61,6 +61,10 @@ dependencies {
   compileOnly 'com.openai:openai-java:2.8.1'
   testImplementation 'com.openai:openai-java:2.8.1'
   implementation "io.opentelemetry.instrumentation:opentelemetry-openai-java-1.1:2.19.0-alpha"
+
+  // Anthropic Instrumentation
+  compileOnly "com.anthropic:anthropic-java:2.8.1"
+  testImplementation "com.anthropic:anthropic-java:2.8.1"
 }
 
 /**
@@ -281,12 +285,13 @@ task validateJavaVersion {
 
 
 // Task to test the jar by running it
-task testJar(type: Exec) {
+task testJar(type: JavaExec) {
   description = 'Test the jar by running it and fail build if non-zero exit code'
   group = 'verification'
   dependsOn jar
 
-  commandLine 'java', '-jar', jar.archiveFile.get().asFile.absolutePath
+  classpath = files(jar.archiveFile)
+  javaLauncher = javaToolchains.launcherFor(java.toolchain)
 
   doFirst {
     // println "Testing jar: ${jar.archiveFile.get().asFile.absolutePath}"
