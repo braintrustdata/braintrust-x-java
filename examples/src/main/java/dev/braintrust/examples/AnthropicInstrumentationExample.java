@@ -28,21 +28,9 @@ public class AnthropicInstrumentationExample {
 
         var rootSpan = tracer.spanBuilder("anthropic-java-instrumentation-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
-            Thread.sleep(70); // just to make span look interesting
-
-            var request =
-                    MessageCreateParams.builder()
-                            .model(Model.CLAUDE_3_5_HAIKU_20241022)
-                            .system("You are the world's greatest philosopher")
-                            .addUserMessage("What's the meaning of life? Be very brief.")
-                            .maxTokens(50)
-                            .temperature(0.0)
-                            .build();
-
-            var response = anthropicClient.messages().create(request);
-            System.out.println("~~~ GOT RESPONSE: " + response);
-
-            Thread.sleep(30); // not required, just to show span duration
+            messagesApiExample(anthropicClient);
+            // streaming instrumentation coming soon
+            // messagesStreamingExample(anthropicClient);
         } finally {
             rootSpan.end();
         }
@@ -54,6 +42,37 @@ public class AnthropicInstrumentationExample {
                                         rootSpan.getSpanContext().getTraceId(),
                                         rootSpan.getSpanContext().getSpanId());
 
-        System.out.println("\n\n  Example complete! View your data in Braintrust: " + url);
+        System.out.println(
+                "\n\n  Example complete! View your data in Braintrust: %s\n".formatted(url));
+    }
+
+    private static void messagesApiExample(AnthropicClient anthropicClient) {
+        var request =
+                MessageCreateParams.builder()
+                        .model(Model.CLAUDE_3_5_HAIKU_20241022)
+                        .system("Use as few words as possible in your answers")
+                        .addUserMessage("Who was the first president of the United States?")
+                        .maxTokens(50)
+                        .temperature(0.0)
+                        .build();
+        var response = anthropicClient.messages().create(request);
+        System.out.println("\n~~~ MESSAGES RESPONSE: %s\n".formatted(response));
+    }
+
+    private static void messagesStreamingExample(AnthropicClient anthropicClient) {
+        var request =
+                MessageCreateParams.builder()
+                        .model(Model.CLAUDE_3_5_HAIKU_20241022)
+                        .system("Use as few words as possible in your answers")
+                        .addUserMessage("Who was the first president of the United States?")
+                        .maxTokens(50)
+                        .temperature(0.0)
+                        .build();
+
+        System.out.println("\n~~~ STREAMING RESPONSE:");
+        try (var stream = anthropicClient.messages().createStreaming(request)) {
+            stream.stream().forEach(System.out::print);
+        }
+        System.out.println("\n");
     }
 }

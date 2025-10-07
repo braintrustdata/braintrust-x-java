@@ -22,18 +22,9 @@ public class OpenAIInstrumentationExample {
                 BraintrustOpenAI.wrapOpenAI(openTelemetry, OpenAIOkHttpClient.fromEnv());
         var rootSpan = tracer.spanBuilder("openai-java-instrumentation-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
-            Thread.sleep(70); // Not required. This is just to make the span look interesting
-            var request =
-                    ChatCompletionCreateParams.builder()
-                            .model(ChatModel.GPT_4O_MINI)
-                            .addSystemMessage("You are a helpful assistant")
-                            .addUserMessage("What is the capital of France?")
-                            .temperature(0.0)
-                            .build();
-            var response = openAIClient.chat().completions().create(request);
-            System.out.println("~~~ GOT RESPONSE: " + response);
-            openAIClient.completions();
-            Thread.sleep(30); // Not required. This is just to make the span look interesting
+            chatCompletionsExample(openAIClient);
+            // streaming instrumentation coming soon
+            // chatCompletionsStreamingExample(openAIClient);
         } finally {
             rootSpan.end();
         }
@@ -43,6 +34,35 @@ public class OpenAIInstrumentationExample {
                                 .formatted(
                                         rootSpan.getSpanContext().getTraceId(),
                                         rootSpan.getSpanContext().getSpanId());
-        System.out.println("\n\n  Example complete! View your data in Braintrust: " + url);
+        System.out.println(
+                "\n\n  Example complete! View your data in Braintrust: %s\n".formatted(url));
+    }
+
+    private static void chatCompletionsExample(OpenAIClient openAIClient) {
+        var request =
+                ChatCompletionCreateParams.builder()
+                        .model(ChatModel.GPT_4O_MINI)
+                        .addSystemMessage("You are a helpful assistant")
+                        .addUserMessage("What is the capital of France?")
+                        .temperature(0.0)
+                        .build();
+        var response = openAIClient.chat().completions().create(request);
+        System.out.println("\n~~~ CHAT COMPLETIONS RESPONSE: %s\n".formatted(response));
+    }
+
+    private static void chatCompletionsStreamingExample(OpenAIClient openAIClient) {
+        var request =
+                ChatCompletionCreateParams.builder()
+                        .model(ChatModel.GPT_4O_MINI)
+                        .addSystemMessage("You are a helpful assistant")
+                        .addUserMessage("What is the capital of France?")
+                        .temperature(0.0)
+                        .build();
+
+        System.out.println("\n~~~ STREAMING RESPONSE:");
+        try (var stream = openAIClient.chat().completions().createStreaming(request)) {
+            stream.stream().forEach(System.out::print);
+        }
+        System.out.println("\n");
     }
 }
