@@ -5,11 +5,14 @@
 
 package dev.braintrust.instrumentation.openai.otel;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionChunk;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessage;
 import com.openai.models.completions.CompletionUsage;
 import io.opentelemetry.api.logs.Logger;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.instrumentation.api.instrumenter.Instrumenter;
 import java.util.ArrayList;
@@ -17,8 +20,11 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import lombok.SneakyThrows;
 
 final class StreamListener {
+    private static final ObjectMapper JSON_MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final Context context;
     private final ChatCompletionCreateParams request;
@@ -51,6 +57,7 @@ final class StreamListener {
         hasEnded = new AtomicBoolean();
     }
 
+    @SneakyThrows
     void onChunk(ChatCompletionChunk chunk) {
         model = chunk.model();
         responseId = chunk.id();
@@ -68,6 +75,11 @@ final class StreamListener {
             buffer.append(choice.delta());
             if (choice.finishReason().isPresent()) {
                 buffer.finishReason = choice.finishReason().get().toString();
+                Span.fromContext(context)
+                        .setAttribute(
+                                "braintrust.output_json",
+                                JSON_MAPPER.writeValueAsString(
+                                        new ChatCompletionMessage[] {buffer.toChoice().message()}));
 
                 // message has ended, let's emit
                 ChatCompletionEventsHelper.emitCompletionLogEvent(
