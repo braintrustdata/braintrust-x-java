@@ -159,8 +159,8 @@ task generateBraintrustProperties {
   description = 'Generate braintrust.properties with smart git-based versioning'
   group = 'build'
 
-  def outputDir = file("$buildDir/generated/resources")
-  def outputFile = file("$outputDir/braintrust.properties")
+  def outputDir = layout.buildDirectory.dir("generated/resources").get().asFile
+  def outputFile = new File(outputDir, "braintrust.properties")
 
   // Tell Gradle what affects this task so it can cache properly
   inputs.property("gitSha", {
@@ -258,7 +258,7 @@ publishing {
 sourceSets {
   main {
     resources {
-      srcDir "$buildDir/generated/resources"
+      srcDir layout.buildDirectory.dir("generated/resources")
     }
   }
 }
