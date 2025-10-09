@@ -4,6 +4,7 @@ import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionStreamOptions;
 import dev.braintrust.config.BraintrustConfig;
 import dev.braintrust.instrumentation.openai.BraintrustOpenAI;
 import dev.braintrust.trace.BraintrustTracing;
@@ -23,7 +24,6 @@ public class OpenAIInstrumentationExample {
         var rootSpan = tracer.spanBuilder("openai-java-instrumentation-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
             chatCompletionsExample(openAIClient);
-            // streaming instrumentation coming soon
             // chatCompletionsStreamingExample(openAIClient);
         } finally {
             rootSpan.end();
@@ -57,11 +57,23 @@ public class OpenAIInstrumentationExample {
                         .addSystemMessage("You are a helpful assistant")
                         .addUserMessage("What is the capital of France?")
                         .temperature(0.0)
+                        .streamOptions(
+                                ChatCompletionStreamOptions.builder().includeUsage(true).build())
                         .build();
 
         System.out.println("\n~~~ STREAMING RESPONSE:");
         try (var stream = openAIClient.chat().completions().createStreaming(request)) {
-            stream.stream().forEach(System.out::print);
+            stream.stream()
+                    .forEach(
+                            chunk -> {
+                                if (!chunk.choices().isEmpty()) {
+                                    chunk.choices()
+                                            .get(0)
+                                            .delta()
+                                            .content()
+                                            .ifPresent(System.out::print);
+                                }
+                            });
         }
         System.out.println("\n");
     }
