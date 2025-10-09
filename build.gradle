@@ -163,8 +163,15 @@ task generateBraintrustProperties {
   def outputDir = file("$buildDir/generated/resources")
   def outputFile = file("$outputDir/braintrust.properties")
 
+  // Tell Gradle what affects this task so it can cache properly
+  inputs.property("gitSha", {
+    ['git', 'rev-parse', 'HEAD'].execute().text.trim()
+  })
+  inputs.property("gitStatus", {
+    ['git', 'status', '--porcelain'].execute().text.trim()
+  })
+
   outputs.file outputFile
-  outputs.upToDateWhen { false } // Always regenerate to get latest version
 
   doLast {
     outputDir.mkdirs()
