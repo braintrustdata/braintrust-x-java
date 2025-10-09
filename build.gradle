@@ -315,8 +315,29 @@ task testJar(type: JavaExec) {
   classpath = files(jar.archiveFile)
   javaLauncher = javaToolchains.launcherFor(java.toolchain)
 
+  // Capture standard output
+  standardOutput = new ByteArrayOutputStream()
+
   doFirst {
     // println "Testing jar: ${jar.archiveFile.get().asFile.absolutePath}"
+  }
+
+  doLast {
+    // Get the version printed by the jar
+    def printedVersion = standardOutput.toString().trim()
+
+    // Get the expected version from git state
+    def expectedVersion = generateVersion()
+
+    // Compare versions
+    if (printedVersion != expectedVersion) {
+      throw new GradleException(
+        "Version mismatch! Jar printed version '${printedVersion}' " +
+        "but expected version from git state is '${expectedVersion}'"
+      )
+    }
+
+    logger.lifecycle("✓ Jar version validation passed: ${printedVersion}")
   }
 }
 
