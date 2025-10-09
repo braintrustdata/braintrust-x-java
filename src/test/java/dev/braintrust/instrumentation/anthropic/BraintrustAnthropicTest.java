@@ -174,4 +174,141 @@ public class BraintrustAnthropicTest {
         assertEquals(8, messageZero.get("usage").get("output_tokens").asInt());
         assertEquals(20, messageZero.get("usage").get("input_tokens").asInt());
     }
+
+    @Test
+    @SneakyThrows
+    void testWrapAnthropicStreaming() {
+        // Mock the Anthropic streaming API response
+        String streamingResponse =
+                """
+                event: message_start
+                data: {"type":"message_start","message":{"id":"msg_test123","type":"message","role":"assistant","model":"claude-3-5-haiku-20241022","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":20,"output_tokens":1}}}
+
+                event: content_block_start
+                data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"The"}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" capital"}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" of"}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" France"}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" is"}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" Paris"}}
+
+                event: content_block_delta
+                data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"."}}
+
+                event: content_block_stop
+                data: {"type":"content_block_stop","index":0}
+
+                event: message_delta
+                data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":8}}
+
+                event: message_stop
+                data: {"type":"message_stop"}
+
+                """;
+
+        wireMock.stubFor(
+                post(urlEqualTo("/v1/messages"))
+                        .willReturn(
+                                aResponse()
+                                        .withStatus(200)
+                                        .withHeader("Content-Type", "text/event-stream")
+                                        .withBody(streamingResponse)));
+
+        var openTelemetry = (OpenTelemetrySdk) BraintrustTracing.of(config, true);
+
+        // Create Anthropic client pointing to WireMock server
+        AnthropicClient anthropicClient =
+                AnthropicOkHttpClient.builder()
+                        .baseUrl("http://localhost:" + wireMock.getPort())
+                        .apiKey("test-api-key")
+                        .build();
+
+        // Wrap with Braintrust instrumentation
+        anthropicClient = BraintrustAnthropic.wrap(openTelemetry, anthropicClient);
+
+        var request =
+                MessageCreateParams.builder()
+                        .model(Model.CLAUDE_3_5_HAIKU_20241022)
+                        .system("You are a helpful assistant")
+                        .addUserMessage("What is the capital of France?")
+                        .maxTokens(50)
+                        .temperature(0.0)
+                        .build();
+
+        // Consume the stream
+        StringBuilder fullResponse = new StringBuilder();
+        try (var stream = anthropicClient.messages().createStreaming(request)) {
+            stream.stream()
+                    .forEach(
+                            event -> {
+                                if (event.contentBlockDelta().isPresent()) {
+                                    var delta = event.contentBlockDelta().get().delta();
+                                    if (delta.text().isPresent()) {
+                                        fullResponse.append(delta.text().get().text());
+                                    }
+                                }
+                            });
+        }
+
+        // Verify the response
+        assertEquals("The capital of France is Paris.", fullResponse.toString());
+        wireMock.verify(1, postRequestedFor(urlEqualTo("/v1/messages")));
+
+        // Verify spans were exported
+        assertTrue(
+                openTelemetry
+                        .getSdkTracerProvider()
+                        .forceFlush()
+                        .join(10, TimeUnit.SECONDS)
+                        .isSuccess());
+        var spanData =
+                getExportedBraintrustSpans().get(config.getBraintrustParentValue().orElseThrow());
+        assertNotNull(spanData);
+        assertEquals(1, spanData.size());
+        var span = spanData.get(0);
+
+        // Verify standard GenAI attributes
+        assertEquals(
+                "anthropic", span.getAttributes().get(AttributeKey.stringKey("gen_ai.system")));
+        assertEquals(
+                "claude-3-5-haiku-20241022",
+                span.getAttributes().get(AttributeKey.stringKey("gen_ai.request.model")));
+        assertEquals(
+                "claude-3-5-haiku-20241022",
+                span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.model")));
+        assertEquals(
+                "chat", span.getAttributes().get(AttributeKey.stringKey("gen_ai.operation.name")));
+        assertEquals(
+                "msg_test123",
+                span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.id")));
+
+        // Verify usage metrics were captured from streaming
+        assertEquals(
+                20L, span.getAttributes().get(AttributeKey.longKey("gen_ai.usage.input_tokens")));
+        assertEquals(
+                8L, span.getAttributes().get(AttributeKey.longKey("gen_ai.usage.output_tokens")));
+
+        // Verify output JSON was captured
+        String outputJson =
+                span.getAttributes().get(AttributeKey.stringKey("braintrust.output_json"));
+        assertNotNull(outputJson);
+        var outputMessages = JSON_MAPPER.readTree(outputJson);
+        assertEquals(1, outputMessages.size());
+        var messageZero = outputMessages.get(0);
+        assertEquals("assistant", messageZero.get("role").asText());
+        assertEquals("The capital of France is Paris.", messageZero.get("content").asText());
+    }
 }

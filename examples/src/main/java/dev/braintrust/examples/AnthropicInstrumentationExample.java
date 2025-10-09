@@ -29,7 +29,6 @@ public class AnthropicInstrumentationExample {
         var rootSpan = tracer.spanBuilder("anthropic-java-instrumentation-example").startSpan();
         try (var ignored = rootSpan.makeCurrent()) {
             messagesApiExample(anthropicClient);
-            // streaming instrumentation coming soon
             // messagesStreamingExample(anthropicClient);
         } finally {
             rootSpan.end();
@@ -71,7 +70,16 @@ public class AnthropicInstrumentationExample {
 
         System.out.println("\n~~~ STREAMING RESPONSE:");
         try (var stream = anthropicClient.messages().createStreaming(request)) {
-            stream.stream().forEach(System.out::print);
+            stream.stream()
+                    .forEach(
+                            event -> {
+                                if (event.contentBlockDelta().isPresent()) {
+                                    var delta = event.contentBlockDelta().get().delta();
+                                    if (delta.text().isPresent()) {
+                                        System.out.print(delta.text().get().text());
+                                    }
+                                }
+                            });
         }
         System.out.println("\n");
     }
