@@ -10,13 +10,19 @@ import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
+import com.openai.models.chat.completions.ChatCompletionContentPart;
+import com.openai.models.chat.completions.ChatCompletionContentPartImage;
+import com.openai.models.chat.completions.ChatCompletionContentPartText;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionStreamOptions;
+import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
 import dev.braintrust.config.BraintrustConfig;
+import dev.braintrust.trace.Base64Attachment;
 import dev.braintrust.trace.BraintrustTracing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
@@ -294,5 +300,188 @@ public class BraintrustOpenAITest {
         assertEquals(1, outputMessages.size());
         var messageZero = outputMessages.get(0);
         assertEquals("The capital of France is Paris.", messageZero.get("content").asText());
+    }
+
+    @Test
+    @SneakyThrows
+    void testWrapOpenAiWithImageAttachment() {
+        // Mock the OpenAI API response for vision request
+        wireMock.stubFor(
+                post(urlEqualTo("/chat/completions"))
+                        .willReturn(
+                                aResponse()
+                                        .withStatus(200)
+                                        .withHeader("Content-Type", "application/json")
+                                        .withBody(
+                                                """
+                                {
+                                  "id": "chatcmpl-test456",
+                                  "object": "chat.completion",
+                                  "created": 1677652288,
+                                  "model": "gpt-4o-mini",
+                                  "choices": [
+                                    {
+                                      "index": 0,
+                                      "message": {
+                                        "role": "assistant",
+                                        "content": "This image shows the Eiffel Tower in Paris, France."
+                                      },
+                                      "finish_reason": "stop"
+                                    }
+                                  ],
+                                  "usage": {
+                                    "prompt_tokens": 150,
+                                    "completion_tokens": 15,
+                                    "total_tokens": 165
+                                  }
+                                }
+                                """)));
+
+        var openTelemetry = (OpenTelemetrySdk) BraintrustTracing.of(config, true);
+
+        // Create OpenAI client pointing to WireMock server
+        OpenAIClient openAIClient =
+                OpenAIOkHttpClient.builder()
+                        .baseUrl("http://localhost:" + wireMock.getPort())
+                        .apiKey("test-api-key")
+                        .build();
+
+        // Wrap with Braintrust instrumentation
+        openAIClient = BraintrustOpenAI.wrapOpenAI(openTelemetry, openAIClient);
+
+        String imageDataUrl =
+                Base64Attachment.ofFile(
+                                Base64Attachment.ContentType.IMAGE_JPEG,
+                                "src/test/java/dev/braintrust/instrumentation/openai/travel-paris-france-poster.jpg")
+                        .getBase64Data();
+
+        // Create text content part
+        ChatCompletionContentPartText textPart =
+                ChatCompletionContentPartText.builder().text("What's in this image?").build();
+        ChatCompletionContentPart textContentPart = ChatCompletionContentPart.ofText(textPart);
+
+        // Create image content part with base64-encoded image
+        ChatCompletionContentPartImage imagePart =
+                ChatCompletionContentPartImage.builder()
+                        .imageUrl(
+                                ChatCompletionContentPartImage.ImageUrl.builder()
+                                        // .url("https://example.com/eiffel-tower.jpg")
+                                        .url(imageDataUrl)
+                                        .detail(ChatCompletionContentPartImage.ImageUrl.Detail.HIGH)
+                                        .build())
+                        .build();
+        ChatCompletionContentPart imageContentPart =
+                ChatCompletionContentPart.ofImageUrl(imagePart);
+
+        // Create user message with both text and image
+        ChatCompletionUserMessageParam userMessage =
+                ChatCompletionUserMessageParam.builder()
+                        .contentOfArrayOfContentParts(
+                                Arrays.asList(textContentPart, imageContentPart))
+                        .build();
+
+        var request =
+                ChatCompletionCreateParams.builder()
+                        .model(ChatModel.GPT_4O_MINI)
+                        .addSystemMessage("You are a helpful assistant that can analyze images")
+                        .addMessage(userMessage)
+                        .temperature(0.0)
+                        .build();
+
+        var response = openAIClient.chat().completions().create(request);
+
+        // Verify the response
+        assertNotNull(response);
+        wireMock.verify(1, postRequestedFor(urlEqualTo("/chat/completions")));
+        assertEquals("chatcmpl-test456", response.id());
+        assertEquals(
+                "This image shows the Eiffel Tower in Paris, France.",
+                response.choices().get(0).message().content().get());
+
+        // Verify spans were exported
+        assertTrue(
+                openTelemetry
+                        .getSdkTracerProvider()
+                        .forceFlush()
+                        .join(10, TimeUnit.SECONDS)
+                        .isSuccess());
+        var spanData =
+                getExportedBraintrustSpans().get(config.getBraintrustParentValue().orElseThrow());
+        assertNotNull(spanData);
+        assertEquals(1, spanData.size());
+        var span = spanData.get(0);
+
+        // Verify span attributes
+        assertEquals("openai", span.getAttributes().get(AttributeKey.stringKey("gen_ai.system")));
+        assertEquals(
+                "gpt-4o-mini",
+                span.getAttributes().get(AttributeKey.stringKey("gen_ai.request.model")));
+        assertEquals(
+                "gpt-4o-mini",
+                span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.model")));
+        assertEquals(
+                "[stop]",
+                span.getAttributes()
+                        .get(AttributeKey.stringArrayKey("gen_ai.response.finish_reasons"))
+                        .toString());
+        assertEquals(
+                "chat", span.getAttributes().get(AttributeKey.stringKey("gen_ai.operation.name")));
+        assertEquals(
+                "chatcmpl-test456",
+                span.getAttributes().get(AttributeKey.stringKey("gen_ai.response.id")));
+
+        // Verify input JSON captures both text and image content
+        String inputJson =
+                span.getAttributes().get(AttributeKey.stringKey("braintrust.input_json"));
+        assertNotNull(inputJson);
+        var inputMessages = JSON_MAPPER.readTree(inputJson);
+        assertEquals(2, inputMessages.size()); // system message + user message
+
+        // Verify system message
+        var systemMessage = inputMessages.get(0);
+        assertEquals("system", systemMessage.get("role").asText());
+        assertEquals(
+                "You are a helpful assistant that can analyze images",
+                systemMessage.get("content").asText());
+
+        // Verify user message with image
+        var userMsg = inputMessages.get(1);
+        assertEquals("user", userMsg.get("role").asText());
+        assertTrue(userMsg.has("content"));
+        var content = userMsg.get("content");
+        assertTrue(content.isArray());
+        assertEquals(2, content.size()); // text + image
+
+        // Verify text content part
+        var textContent = content.get(0);
+        assertEquals("text", textContent.get("type").asText());
+        assertEquals("What's in this image?", textContent.get("text").asText());
+
+        // Verify image content part (now serialized as base64_attachment)
+        var imageContent = content.get(1);
+        assertEquals("base64_attachment", imageContent.get("type").asText());
+        assertTrue(imageContent.has("content"));
+        assertTrue(imageContent.get("content").asText().startsWith("data:image/jpeg;base64,"));
+        assertEquals(
+                imageDataUrl,
+                imageContent.get("content").asText(),
+                "base64 data not correctly serialized");
+
+        // Verify usage metrics
+        assertEquals(
+                150L, span.getAttributes().get(AttributeKey.longKey("gen_ai.usage.input_tokens")));
+        assertEquals(
+                15L, span.getAttributes().get(AttributeKey.longKey("gen_ai.usage.output_tokens")));
+
+        // Verify output JSON
+        String outputJson =
+                span.getAttributes().get(AttributeKey.stringKey("braintrust.output_json"));
+        assertNotNull(outputJson);
+        var outputMessages = JSON_MAPPER.readTree(outputJson);
+        assertEquals(1, outputMessages.size());
+        var messageZero = outputMessages.get(0);
+        assertEquals(
+                "This image shows the Eiffel Tower in Paris, France.",
+                messageZero.get("content").asText());
     }
 }

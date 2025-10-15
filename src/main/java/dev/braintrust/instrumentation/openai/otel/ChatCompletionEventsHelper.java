@@ -7,9 +7,14 @@ package dev.braintrust.instrumentation.openai.otel;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionAssistantMessageParam;
+import com.openai.models.chat.completions.ChatCompletionContentPartImage;
 import com.openai.models.chat.completions.ChatCompletionContentPartText;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.chat.completions.ChatCompletionDeveloperMessageParam;
@@ -18,12 +23,14 @@ import com.openai.models.chat.completions.ChatCompletionMessageToolCall;
 import com.openai.models.chat.completions.ChatCompletionSystemMessageParam;
 import com.openai.models.chat.completions.ChatCompletionToolMessageParam;
 import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
+import dev.braintrust.trace.Base64Attachment;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Value;
 import io.opentelemetry.api.logs.LogRecordBuilder;
 import io.opentelemetry.api.logs.Logger;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Context;
+import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -41,8 +48,38 @@ import lombok.extern.slf4j.Slf4j;
 final class ChatCompletionEventsHelper {
 
     private static final AttributeKey<String> EVENT_NAME = stringKey("event.name");
-    private static final ObjectMapper JSON_MAPPER =
-            new com.fasterxml.jackson.databind.ObjectMapper();
+    private static final ObjectMapper JSON_MAPPER = createObjectMapper();
+
+    private static ObjectMapper createObjectMapper() {
+        final JsonSerializer<Base64Attachment> attachmentSerializer =
+                Base64Attachment.createSerializer();
+        ObjectMapper mapper = new ObjectMapper();
+        SimpleModule module = new SimpleModule();
+        module.addSerializer(
+                ChatCompletionContentPartImage.class,
+                new JsonSerializer<>() {
+                    @Override
+                    public void serialize(
+                            ChatCompletionContentPartImage value,
+                            JsonGenerator gen,
+                            SerializerProvider serializers)
+                            throws IOException {
+                        try {
+                            var attachment =
+                                    Base64Attachment.of(
+                                            value.validate().imageUrl().validate().url());
+                            attachmentSerializer.serialize(attachment, gen, serializers);
+                        } catch (Exception e) {
+                            JsonSerializer<Object> defaultSerializer =
+                                    serializers.findValueSerializer(
+                                            ChatCompletionContentPartImage.class, null);
+                            defaultSerializer.serialize(value, gen, serializers);
+                        }
+                    }
+                });
+        mapper.registerModule(module);
+        return mapper;
+    }
 
     @SneakyThrows
     public static void emitPromptLogEvents(
